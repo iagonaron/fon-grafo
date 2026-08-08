@@ -4,6 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Fonógrafo de cilindro de cera — despiece y manejo guiado</title>
+
+<!-- ── acceso directo en la pantalla de inicio ──────────────────── -->
+<meta name="theme-color" content="#14100C">
+<meta name="description" content="Simulador interactivo de un fonógrafo de cilindro de cera de 1899: despiece guiado, grabación en la cera y comparación con el sonido original.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fonógrafo">
+<!-- ─────────────────────────────────────────────────────────────── -->
 <style>
   :root{
     --soot:#14100C; --brass:#C9A24A; --brass-hi:#F2D793;
@@ -1156,7 +1173,11 @@ function micEnable(){
     });
   }).catch(function(){
     S.micOn=false;
-    toast('El navegador no ha concedido el micrófono. Puedes seguir con la melodía de 1860 o arrastrando una canción sobre la ventana.',10000);
+    var enIcono=(window.navigator.standalone===true)||
+      (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+    toast(enIcono
+      ? 'Abierto desde el icono de inicio, este dispositivo no da acceso al micrófono. Para grabar, abre la página en Safari o Chrome. La muestra de piano sí funciona aquí.'
+      : 'El navegador no ha concedido el micrófono. Puedes continuar con la muestra de piano.',12000);
     return false;
   });
 }
