@@ -308,7 +308,7 @@
     <button class="btn plate sm" id="fAB" style="flex:1">Oír original</button>
     <button class="btn plate sm" id="fNew" style="flex:1">Grabar otro</button>
   </div>
-  <button class="btn plate sm" style="background:linear-gradient(176deg,#5C3C15,#A06D23 40%,#4B3010);color:#FFF3DC;text-shadow:0 1px 0 rgba(0,0,0,.45)" data-cine="edison">▶ Vídeo · Edison</button>
+  <button class="btn plate sm" style="background:linear-gradient(176deg,#5C3C15,#A06D23 40%,#4B3010);color:#FFF3DC;text-shadow:0 1px 0 rgba(0,0,0,.45)" data-cine="edison">▶ Muestra real de fonógrafo</button>
   <button class="btn plate sm" style="background:linear-gradient(176deg,#5C3C15,#A06D23 40%,#4B3010);color:#FFF3DC;text-shadow:0 1px 0 rgba(0,0,0,.45)" data-cine="castrati">▶ Vídeo · Moreschi</button>
   <button class="btn ghost" id="fPre">Poner la muestra de piano en la cera</button>
   <button class="btn ghost" id="fTour">Ver el despiece otra vez</button>
@@ -1897,7 +1897,7 @@ else boot();
 </script>
 
 <div id="cineTabs">
-    <button class="cineTab" data-cine="edison">▶ Vídeo · Edison</button>
+    <button class="cineTab" data-cine="edison">▶ Muestra real de fonógrafo</button>
     <button class="cineTab" data-cine="castrati">▶ Vídeo · Moreschi</button>
 </div>
 
@@ -1914,8 +1914,8 @@ else boot();
 <script>
 (function(){
   var VID = {
-    edison:{t:'La primera grabación sonora de Thomas Edison',f:'video-edison.mp4',
-      p:'Unidad 1 · lo que acabas de simular, en la realidad.'},
+    edison:{t:'Muestra real de fonógrafo',f:'video-edison.mp4',
+      p:'Unidad 1 · un fonógrafo de verdad sonando: esto es lo que acabas de simular.'},
     castrati:{t:'Alessandro Moreschi · Ave María (el último castrato)',f:'video-castrati.mp4',
       p:'Unidad 1 · una voz que solo conocemos porque existía el fonógrafo. Grabada en 1902.'}
   };
@@ -1941,6 +1941,23 @@ else boot();
   Array.prototype.forEach.call(document.querySelectorAll('[data-cine]'),function(b){
     b.addEventListener('click',function(){ abre(b.getAttribute('data-cine')); });
   });
+})();
+</script>
+
+<script>
+(function(){
+  function coloca(){
+    var t=document.getElementById('cineTabs'), m=document.getElementById('maker');
+    if(!t) return;
+    var y=18;
+    if(m){ var r=m.getBoundingClientRect(); if(r.height) y=r.bottom+16; }
+    t.style.top=Math.round(y)+'px';
+  }
+  window.addEventListener('resize',coloca);
+  window.addEventListener('orientationchange',coloca);
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',coloca);
+  else coloca();
+  setTimeout(coloca,400); setTimeout(coloca,1500);
 })();
 </script>
 </body>
