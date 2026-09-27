@@ -1,0 +1,36 @@
+# SUBIDA ÚNICA del fonógrafo v3 · 27-09-2026 10:39 (Madrid)
+# Conversación Cowork «Fonógrafo (intro + portal 3D)» · https://claude.ai/code/session_01MrBT3SuCU5UmwTgcQLojUA
+# Trae de Dropbox (enlaces temporales de un solo uso, 15 min) index.html e intro/fonografo_intro.mp4,
+# comprueba su md5 y los publica. Este archivo se borra en cuanto termine: no lo reutilices.
+name: Fonografo v3 - subida unica (se borra al terminar)
+on:
+  push:
+    paths:
+      - .github/workflows/fonografo-subida.yml
+permissions:
+  contents: write
+jobs:
+  subir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Traer de Dropbox y comprobar md5
+        env:
+          U1: https://ucb04d4c7148f78dd4f1666b2f67.dl.dropboxusercontent.com/cd/0/get/DI6DrRTBX-Tjtp0SF321AIijLX-7kQnSgVkGehcFm7OP0T1PjQns3KI3sdOUEusB-U-LFJ7CZKydL0VuNJY1_8CAPsV_AF69eDvtfUH5oYTEmuk7tIjV_EmJ2_giwkJ14zO_Yg5GCIKzNkLq6izPlAwL2RDNporzMLyiK2GKHHT2iw/file?c_luid=c46f0857
+          U2: https://uc796fd091f23098b0f3af1810fc.dl.dropboxusercontent.com/cd/0/get/DI6amYLE0--33uAK56OP_6O1tLOUnYzkMsumhGkcv0uyeO8m7JHe9JkaPE92GSEkj6p-o4LxIfgzQVLNz7xaHTiEqANwAEjpl8EEhi2Awkb6Tlv0g5ovY6meu6hbsdkmTNaMz07fOo3TQCU7qnK_o39AoiTk95ldBNWVdGV4UcPqQQ/file?c_luid=c46f0857
+        run: |
+          set -euo pipefail
+          mkdir -p intro
+          curl -fsSL -o index.html "$U1"
+          curl -fsSL -o intro/fonografo_intro.mp4 "$U2"
+          printf '%s  %s\n' db0b19463ecc9ca4a25c8f187b1ab566 index.html 89defaa553e0895d755e2c8b29c65679 intro/fonografo_intro.mp4 > /tmp/sumas.md5
+          md5sum -c /tmp/sumas.md5
+          ls -la index.html intro/fonografo_intro.mp4
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html intro/fonografo_intro.mp4
+          git commit -m "Fonógrafo v3 · 27-09-2026 10:39 · conversación Cowork «Fonógrafo»: portada viva, intro completa sin saltar (solo Salir), montaje nuevo, cilindro verde"
+          git push
