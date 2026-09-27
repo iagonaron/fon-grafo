@@ -1,0 +1,34 @@
+# SUBIDA ÚNICA (2/2) del fonógrafo v3 · 27-09-2026 12:31 (Madrid): vídeo de la intro con el cilindro verde
+# Conversación Cowork «Fonógrafo (intro + portal 3D)» · https://claude.ai/code/session_01MrBT3SuCU5UmwTgcQLojUA
+# Trae de Dropbox (enlace temporal de un solo uso, 15 min) intro/fonografo_intro.mp4, comprueba su md5 y lo
+# publica. Este archivo se borra en cuanto termine: no lo reutilices.
+name: Fonografo v3 - video verde (se borra al terminar)
+on:
+  push:
+    paths:
+      - .github/workflows/fonografo-video-verde.yml
+permissions:
+  contents: write
+jobs:
+  subir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Traer de Dropbox y comprobar md5
+        env:
+          U2: https://uc090925c8c58dfb5104ffb124b9.dl.dropboxusercontent.com/cd/0/get/DI5itGOmfU_QCKJsN8EyxvryRmRRTuPmsRv5it0SsEQ0gDIGrhObHzd8TRA0RgsJEIA0WiX4WwGjQN6H3HX590nzRHux1Iw037InxdA-e6zCLO5e8LTuJBoyiaZtAjtLd6-mb-7q9O_lLy-cd2yJCEsbe3yzgSNA709td2nBFj3BSw/file?c_luid=c46f0857
+        run: |
+          set -euo pipefail
+          mkdir -p intro
+          curl -fsSL -o intro/fonografo_intro.mp4 "$U2"
+          printf '%s  %s\n' 6cdd5002dcb63711d8633674fa4b342a intro/fonografo_intro.mp4 > /tmp/sumas.md5
+          md5sum -c /tmp/sumas.md5
+          ls -la intro/fonografo_intro.mp4
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add intro/fonografo_intro.mp4
+          git commit -m "Fonógrafo v3 · 27-09-2026 12:31 · conversación Cowork «Fonógrafo»: vídeo de la intro con el cilindro verde"
+          git push
