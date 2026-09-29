@@ -13,6 +13,17 @@
   Fuente de verdad: Dropbox APPs/LMATHOME GP (github lmpro)/TEORIA INTERACTIVA 2GP (github x8)/FONÓGRAFO/
   El botón u1 «Fonógrafo» del medallero (repo lmpro) abre esta web; no hace falta tocar lmpro.
   Si vas a cambiar este archivo: parte de ESTA versión (no de una copia anterior) y deja aquí tu propio aviso.
+
+  AVISO 29-09-2026 (conversación Cowork «Intros didácticas», a petición de Iago tras probarlo en la pantalla del aula):
+  partiendo del commit 6dd518f, (1) botón discreto de PANTALLA COMPLETA arriba (#fsBtn: a la izquierda; en la portada, a
+  la derecha, para no tapar el logo); (2) el 3D más ligero en pantallas grandes: resolución interna con tope de ~3,7
+  megapíxeles desde el primer momento (antes empezaba a 8 Mpx en una 4K, iba a tirones y luego bajaba solo) y sombras cada
+  2 fotogramas; (3) cámara: «Máquina» un 12 % más lejos y centrada en el hueco libre (mira a x -.08 en vez de .14) y los primeros planos
+  un 10 % más lejos; (4) PORTADA QUIETA: sin «respirar» ni girar el cilindro, y su 3D se redibuja a ~15 fps (solo titila
+  la vela); (5) fundidos más cortos (portada .35 s, introducción .4/.5 s, interfaz .3 s; el travelling hacia la
+  introducción, de 2,3 s a 0,9 s); (6) sin desenfoque detrás de los paneles (ya eran casi opacos y se recalculaba en cada
+  fotograma) y la viñeta #grade sin mezcla «multiply» (misma oscuridad, sin la capa extra). Todo marcado «(29-sep-2026)».
+  Para deshacerlo: volver a subir el index.html del commit 6dd518f.
 -->
 
 <!-- Sentry (17-sep-2026): errores JS en produccion. Sin datos personales: solo el id anonimo de la cuenta como etiqueta. -->
@@ -1243,9 +1254,9 @@ function createPortalScene(THREE, RoundedBoxGeometry, opts) {
   const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   const LITE = /[?&]lite/.test(location.search), TEST = /[?&]test/.test(location.search);
   const HQ = /[?&]hq/.test(location.search);
-  let PR = HQ ? 1 : TEST ? .25 : LITE ? .5 : Math.min(window.devicePixelRatio || 1, 2); const PRMAX = PR;
+  let PR = HQ ? 1 : TEST ? .25 : LITE ? .5 : Math.min(window.devicePixelRatio || 1, 2, Math.max(.75, Math.sqrt(3.7e6 / Math.max(1, innerWidth * innerHeight)))); const PRMAX = PR;   // (29-sep-2026) tope ~3,7 Mpx: en una pantalla 4K ya no dibuja 8 Mpx
   R.setPixelRatio(PR); R.setSize(innerWidth, innerHeight, false);
-  R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap; R.shadowMap.autoUpdate = true;
+  R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap; R.shadowMap.autoUpdate = false; let sombraN = 0;   // (29-sep-2026) sombras cada 2 fotogramas
   R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.05; R.outputColorSpace = THREE.SRGBColorSpace;
   R.setClearColor(0x000000, 0);
   R.domElement.style.width = '100%'; R.domElement.style.height = '100%';
@@ -1514,12 +1525,13 @@ function createPortalScene(THREE, RoundedBoxGeometry, opts) {
     if (avg > 27 && PR > .75) { PR = Math.max(.75, PR * .8); R.setPixelRatio(PR); R.setSize(innerWidth, innerHeight, false); }
     else if (avg < 15 && PR < PRMAX) { PR = Math.min(PRMAX, PR * 1.15); R.setPixelRatio(PR); R.setSize(innerWidth, innerHeight, false); }
   }
-  function render(camera) {
-    adapt();
+  function render(camera, quieto) {
+    if (quieto) lastT = performance.now(); else adapt();   // (29-sep-2026) portada a ~15 fps: no cuenta como «va lento»
     candle.intensity = 11 * flick * bright; candleFill.intensity = 2.5 * flick * bright; lamp.intensity = 2.2 * (0.96 + .04 * flick) * bright;
     const cm = camera || cam;
     key.intensity = WORK.key * work; fill.intensity = .75 + WORK.fill * work; hemi.intensity = .45 + WORK.hemi * work; headL.intensity = WORK.head * work;
     if (work > 0) { cm.getWorldDirection(_hd); _hr.crossVectors(_hd, cm.up).normalize(); headL.position.copy(cm.position).addScaledVector(cm.up, .45).addScaledVector(_hr, .3); headL.target.position.copy(cm.position).addScaledVector(_hd, 2.5); }
+    R.shadowMap.needsUpdate = (sombraN++ % 2 === 0);   // (29-sep-2026)
     R.render(S, cm);
   }
   function resize() { R.setSize(innerWidth, innerHeight, false); fitFov(); }
@@ -1736,14 +1748,15 @@ function VS(name,q,az,el,d){   // q: punto mirado (coordenadas de la máquina) �
 }
 function buildViews(){
   V('sala',SC3.PLATE_CAM.p,SC3.PLATE_CAM.t,false);
-  VS('general',  [.14,.58,-.06], 22,20,2.9);
-  VS('mecanismo',[.46,.36,0],    38,21,1.8);
-  VS('cilindro', [.02,.62,-.08], 16,26,1.3);
-  VS('bocina',   [.36,.8,-.08],  28,21,2.05);
-  VS('bocinaRec',[.36,.8,-.08],  28,21,2.05);
-  VS('montCyl',  [.02,.6,-.08],  18,24,1.6);
-  VS('montHead', [.04,.7,-.08],  20,25,1.35);
-  VS('montHorn', [.3,.78,-.08],  26,21,2.25);
+  /* (29-sep-2026, Iago) un poco más lejos (en la pantalla grande del aula se notaba la resolución) y «Máquina» centrada */
+  VS('general',  [-.08,.58,-.06], 22,20,3.25);
+  VS('mecanismo',[.46,.36,0],    38,21,1.98);
+  VS('cilindro', [.02,.62,-.08], 16,26,1.43);
+  VS('bocina',   [.36,.8,-.08],  28,21,2.26);
+  VS('bocinaRec',[.36,.8,-.08],  28,21,2.26);
+  VS('montCyl',  [.02,.6,-.08],  18,24,1.76);
+  VS('montHead', [.04,.7,-.08],  20,25,1.49);
+  VS('montHorn', [.3,.78,-.08],  26,21,2.48);
   VIEWS.vitrina=VIEWS.general;
 }
 var orb={r:3,t:0,p:1.25,tgt:new THREE.Vector3(0,.32,-.45),
@@ -2714,7 +2727,7 @@ function tick(){
     var rot=(S.rpm/60)*Math.PI*2*dt;
     ANG+=rot; GOV+=rot*5.2;
   }
-  if(S.phase==='boot'){ ANG+=dt*.32; FX.ezoom=1+.014*(.5-.5*Math.cos(t*.24)); }   // portada viva: el cilindro gira despacio y la escena «respira»
+  if(S.phase==='boot'){ FX.ezoom=1; }   // (29-sep-2026, Iago) portada quieta: ni «respira» ni gira el cilindro (en la pantalla del aula iba a tirones)
 
   crankUpdate(dt);   // @fb3 · manivela a mano humana + trinquete sincronizado
 
@@ -2774,8 +2787,14 @@ function tick(){
     car:(phono.car.position.x+.58)/1.16, arm:ARM, headK:(S.headIn?S.headK:0), ang:ANG, gov:GOV, crank:CRANK, rpm:S.rpm, mica:MICA});
   plateUpdate(t);
   fxUpdate(dt,t);    // @fb3 · camino del sonido (aguja ↔ bocina ↔ sala) y surco dorado
+  // (29-sep-2026) portada: con la cámara ya asentada, el 3D se redibuja 1 de cada 4 fotogramas (solo titila la vela)
+  if(S.phase==='boot'&&!orb.drag&&Math.abs(OV.r)+Math.abs(OV.t)+Math.abs(OV.p)+Math.abs(OV.x)+Math.abs(OV.y)+Math.abs(OV.z)<2e-4){
+    PORT_N=(PORT_N+1)%4; if(PORT_N) return; SC3.render(camera,true); return;
+  }
+  PORT_N=0;
   SC3.render(camera);
 }
+var PORT_N=0;   // (29-sep-2026) portada a ~15 fps
 
 /* ═══ 9 · ARRANQUE ════════════════════════════════════════
    @v3 · portada viva: la misma escena (el fonógrafo montado sobre la mesa del despacho, la vela
@@ -2826,14 +2845,14 @@ function introStart(){
   hideCover();
   var sv=VIEWS.sala; orb.slow=.28; orb.gr=sv.r*.55; orb.gp=sv.p-.05;
   var c=SC3.Lw(.1,.62,-.08); orb.gtgt.set(c.x,c.y,c.z);
-  tween(FX,'veil',1,2.3); tween(FX,'bright',.8,2.3);
+  tween(FX,'veil',1,.9); tween(FX,'bright',.8,.9);   // (29-sep-2026) antes 2,3 s
   setTimeout(function(){
     if(S.phase!=='intro-go') return;            // @fb4 · se salió durante el travelling
     S.phase='intro'; introGoShown=false; $('introGo').classList.remove('on');
     $('intro').classList.add('on');
     try{ IV.currentTime=0; var pp=IV.play(); if(pp&&pp.catch) pp.catch(function(){ $('introHint').textContent='TOCA PARA EMPEZAR'; $('introHint').classList.add('on'); }); }catch(e){}
     setTimeout(function(){ if(S.phase==='intro'&&IV.currentTime<.05&&IV.paused){ $('introHint').textContent='TOCA PARA EMPEZAR'; $('introHint').classList.add('on'); } },2500);
-  },2250);
+  },950);   // (29-sep-2026) antes 2250
 }
 function introToggle(){ if(!IV) return; if(IV.paused){ IV.play(); $('introHint').classList.remove('on'); $('introHint').textContent='PAUSA · TOCA PARA SEGUIR'; } else { IV.pause(); $('introHint').textContent='PAUSA · TOCA PARA SEGUIR'; $('introHint').classList.add('on'); } }
 /* @fb4 · la introducción no se puede saltar: se ve de principio a fin. La única salida es «Salir»,
@@ -2853,7 +2872,7 @@ function introExit(){
   var v0=IV.volume, t0=performance.now();
   (function vol(){ var u=Math.min(1,(performance.now()-t0)/700); try{ IV.volume=Math.max(0,v0*(1-u)); }catch(e){} if(u<1) requestAnimationFrame(vol); })();
   L.classList.add('out');
-  setTimeout(function(){ try{ IV.pause(); IV.currentTime=0; IV.volume=v0; }catch(e){} L.classList.remove('on','out'); IV.style.transform=''; },1600);
+  setTimeout(function(){ try{ IV.pause(); IV.currentTime=0; IV.volume=v0; }catch(e){} L.classList.remove('on','out'); IV.style.transform=''; },750);   // (29-sep-2026) antes 1600
 }
 function coverScale(){ var A=innerWidth/innerHeight, V=16/9; return Math.max(A/V,V/A); }
 function introEnd(fast){
@@ -2874,7 +2893,7 @@ function introEnd(fast){
     try{ IV.pause(); IV.volume=v0; }catch(e){}
     L.classList.remove('on','out'); IV.style.transform='';
     tween(FX,'ezoom',1,2.4); tween(FX,'work',1,3.0); tourStart();   // @fb3 · tras el vídeo se enciende la luz de trabajo
-  },fast?800:2500);
+  },fast?800:1500);   // (29-sep-2026) antes 2500
 }
 function bindCover(){
   $('bIntro').addEventListener('click',introStart);
@@ -3020,6 +3039,52 @@ window.__startPortal(THREE,RoundedBoxGeometry,plate);
       }
     }).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['width','height','style']});
   }catch(e){}
+})();
+</script>
+
+<!-- (29-sep-2026, Iago) PANTALLA COMPLETA: botón discreto arriba a la izquierda (portada, introducción y montaje).
+     Para quitarlo: borrar este bloque (y la regla #maker de abajo que deja sitio al botón). -->
+<button id="fsBtn" type="button" aria-label="Pantalla completa" title="Pantalla completa">
+  <svg class="fsOn" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+  <svg class="fsOff" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+</button>
+<style>
+  #fsBtn{position:fixed;top:max(calc(var(--pad,16px)*.9),env(safe-area-inset-top));left:calc(var(--pad,16px)*1.1);z-index:60;
+    width:32px;height:32px;box-sizing:border-box;display:grid;place-items:center;padding:0;border-radius:8px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.22);background:rgba(20,14,9,.45);color:rgba(255,236,210,.8);opacity:.7;
+    transition:opacity .2s,border-color .2s,background .2s}
+  #fsBtn:hover,#fsBtn:focus-visible{opacity:1;border-color:rgba(255,220,170,.6);background:rgba(20,14,9,.7);outline:none}
+  #fsBtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  #fsBtn .fsOff{display:none}
+  #fsBtn.dentro .fsOn{display:none}
+  #fsBtn.dentro .fsOff{display:block}
+  #fsBtn[hidden]{display:none}
+  #maker{left:calc(var(--pad,16px)*1.1 + 44px)!important}   /* deja sitio al botón */
+  body:has(#boot:not(.gone)) #fsBtn{left:auto;right:calc(var(--pad,16px)*1.1)}   /* portada: a la derecha (a la izquierda está el logo) */
+  /* (29-sep-2026) fundidos más cortos */
+  #boot{transition:opacity .35s ease!important}
+  #intro{transition:opacity .4s ease!important}
+  #intro.out{transition:opacity .5s ease!important}
+  #maker,#rail,#pad,#steps,#cineTabs,#tour,#guide,#free{transition:opacity .3s ease!important}
+  /* (29-sep-2026) sin desenfoque detrás de los paneles (ya eran casi opacos; se recalculaba en cada fotograma del 3D) */
+  #steps,#gauges,#manual,#vuWrap,#free,#pad,.tPanel,#toast,.card,.cineTab{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  #steps{background:rgba(26,20,16,.84)}
+  /* (29-sep-2026) viñeta sin mezcla «multiply»: la misma oscuridad en los bordes, sin la capa de mezcla de pantalla completa */
+  #grade{mix-blend-mode:normal!important;background:radial-gradient(ellipse 92% 86% at 50% 46%,rgba(0,0,0,0) 52%,rgba(0,0,0,.325) 100%)!important}
+</style>
+<script>
+(function(){
+  var b = document.getElementById('fsBtn'), d = document, el = d.documentElement;
+  var pedir = el.requestFullscreen || el.webkitRequestFullscreen, salir = d.exitFullscreen || d.webkitExitFullscreen;
+  if (!pedir) { b.hidden = true; return; }                   /* iPhone y navegadores sin pantalla completa: sin botón */
+  function dentro(){ return !!(d.fullscreenElement || d.webkitFullscreenElement); }
+  function pinta(){ var e = dentro(); b.classList.toggle('dentro', e); b.title = e ? 'Salir de pantalla completa' : 'Pantalla completa'; b.setAttribute('aria-label', b.title); }
+  b.addEventListener('click', function(ev){
+    ev.stopPropagation();
+    try { if (dentro()) salir.call(d); else { var p = pedir.call(el); if (p && p.catch) p.catch(function(){}); } } catch (e) {}
+  });
+  ['pointerdown','mousedown','touchstart'].forEach(function(t){ b.addEventListener(t, function(e){ e.stopPropagation(); }, { passive: true }); });
+  d.addEventListener('fullscreenchange', pinta); d.addEventListener('webkitfullscreenchange', pinta); pinta();
 })();
 </script>
 </body>
