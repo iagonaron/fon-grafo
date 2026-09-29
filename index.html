@@ -24,6 +24,15 @@
   introducción, de 2,3 s a 0,9 s); (6) sin desenfoque detrás de los paneles (ya eran casi opacos y se recalculaba en cada
   fotograma) y la viñeta #grade sin mezcla «multiply» (misma oscuridad, sin la capa extra). Todo marcado «(29-sep-2026)».
   Para deshacerlo: volver a subir el index.html del commit 6dd518f.
+
+  AVISO 29-09-2026, tarde (conversación Cowork «Intros didácticas», a petición de Iago): partiendo del commit 05c8b98,
+  LA INTRODUCCIÓN SOLO EMPIEZA DESCARGADA ENTERA (no se para a mitad): se baja en segundo plano (fetch → Blob) en cuanto
+  se abre la portada, salvo con ahorro de datos o datos móviles; si se pulsa «VER INTRODUCCIÓN» antes de que acabe, la
+  portada se queda (fonógrafo en la mesa, vela titilando) y el propio botón se llena con una barra dorada («CARGANDO LA
+  INTRODUCCIÓN») hasta el 100 %; entonces empieza como siempre. «MONTA TU FONÓGRAFO» sigue funcionando mientras carga.
+  Si el navegador no deja descargarlo así, la introducción va como antes (por streaming).
+  Es un bloque autónomo antes de </body> («CARGA DE LA INTRO»): para deshacerlo, borrar ese bloque (o volver a subir el
+  index.html del commit 05c8b98).
 -->
 
 <!-- Sentry (17-sep-2026): errores JS en produccion. Sin datos personales: solo el id anonimo de la cuenta como etiqueta. -->
@@ -3085,6 +3094,80 @@ window.__startPortal(THREE,RoundedBoxGeometry,plate);
   });
   ['pointerdown','mousedown','touchstart'].forEach(function(t){ b.addEventListener(t, function(e){ e.stopPropagation(); }, { passive: true }); });
   d.addEventListener('fullscreenchange', pinta); d.addEventListener('webkitfullscreenchange', pinta); pinta();
+})();
+</script>
+
+<!-- (29-sep-2026, tarde, Iago) CARGA DE LA INTRO: la introducción solo empieza cuando está DESCARGADA ENTERA (así no se
+     para a mitad). Se baja en segundo plano en cuanto se abre la portada (salvo con ahorro de datos o datos móviles); si se
+     pulsa «VER INTRODUCCIÓN» antes de que acabe, la portada se queda (fonógrafo en la mesa, vela) y el propio botón se llena
+     con una barra dorada hasta el 100 %. Para quitarlo: borrar este bloque. -->
+<style>
+  #bIntro .cargaIntro{position:absolute;left:0;top:0;bottom:0;width:0;pointer-events:none;border-radius:inherit;
+    background:linear-gradient(90deg,rgba(255,200,120,.04),rgba(255,200,120,.20));transition:width .25s linear}
+  #bIntro .cargaIntro::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:2px;
+    background:linear-gradient(90deg,#b9853a,#ffd48a);box-shadow:0 0 12px rgba(255,200,120,.7)}
+  #bIntro span,#bIntro b{position:relative;z-index:1}
+  #bIntro.cargando{border-color:#ffd48a;color:#fff6e4;cursor:progress}
+  #bIntro.cargando b{animation:ciLate 1.1s ease-in-out infinite}
+  @keyframes ciLate{50%{opacity:.3}}
+</style>
+<script>
+(function(){
+  'use strict';
+  var D = { empezada: false, lista: false, fallo: false, rec: 0, tot: 0, url: null };
+  var v = null, btn = null, fill = null, lab = null, txt0 = '', tm = null, pasa = false;
+  function vid(){ return v || (v = document.getElementById('introVid')); }
+  function descarga(){                        // el vídeo entero a la memoria del navegador (fetch → Blob)
+    if (D.empezada || !vid()) return; D.empezada = true;
+    var u = v.getAttribute('src') || v.currentSrc;
+    if (!window.fetch || !window.ReadableStream || !u || location.protocol === 'file:') { D.fallo = D.lista = true; return; }
+    fetch(u).then(function(r){
+      if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+      D.tot = +r.headers.get('Content-Length') || 0;
+      var rd = r.body.getReader(), trozos = [];
+      function paso(){ return rd.read().then(function(x){ if (x.done) return; trozos.push(x.value); D.rec += x.value.length; return paso(); }); }
+      return paso().then(function(){
+        D.url = URL.createObjectURL(new Blob(trozos, { type: (r.headers.get('Content-Type') || 'video/mp4').split(';')[0] }));
+        trozos = null; D.lista = true;
+        if (window.__S && window.__S.phase === 'boot' && !tm) v.src = D.url;   // en la portada: ya queda puesto
+      });
+    }).catch(function(e){ console.warn('Introducción sin descarga previa:', e); D.fallo = D.lista = true; });
+  }
+  function ponBlob(){ if (D.url && vid() && v.src !== D.url) { v.src = D.url; } }
+  function fin(){ clearInterval(tm); tm = null; if (!btn) return; btn.classList.remove('cargando'); if (fill) fill.style.width = '0'; if (lab && txt0) lab.textContent = txt0; }
+  function arranca(){ fin(); ponBlob(); pasa = true; try { btn.click(); } finally { pasa = false; } }   // la introducción de siempre
+  // en segundo plano, en cuanto la portada está lista (no con ahorro de datos ni con datos móviles)
+  var c = navigator.connection || {};
+  var ahorra = c.saveData || c.type === 'cellular' || /(^|-)2g$/.test(c.effectiveType || '');
+  if (!ahorra) {
+    var espera = setInterval(function(){
+      var b = document.getElementById('bIntro');
+      if (window.__S && b && !b.disabled) { clearInterval(espera); setTimeout(descarga, 1200); }
+    }, 500);
+  }
+  document.addEventListener('click', function(e){
+    var t = e.target && e.target.closest ? e.target : null; if (!t) return;
+    if (t.closest('#bBoot')) { if (tm) fin(); return; }                        // «Monta» mientras carga: al montaje
+    if (!t.closest('#bIntro') || pasa) return;
+    btn = document.getElementById('bIntro');
+    if (!vid() || !btn || !window.__S || window.__S.phase !== 'boot') return;
+    if (tm) { e.stopImmediatePropagation(); e.preventDefault(); return; }       // ya está cargando
+    if (D.lista) { ponBlob(); return; }                                         // descargada (o sin descarga posible): adelante
+    e.stopImmediatePropagation(); e.preventDefault();
+    descarga();
+    lab = btn.querySelector('span'); if (!txt0) txt0 = lab.textContent;
+    if (!fill) { fill = document.createElement('i'); fill.className = 'cargaIntro'; btn.insertBefore(fill, btn.firstChild); }
+    btn.classList.add('cargando'); lab.textContent = 'CARGANDO LA INTRODUCCIÓN';
+    try { v.muted = false; var p = v.play(); if (p && p.catch) p.catch(function(){}); v.pause(); } catch (x) {}   // este clic deja sonar después
+    var t0 = performance.now();
+    var pinta = function(){
+      if (!window.__S || window.__S.phase !== 'boot') { fin(); return; }
+      var k = D.tot ? D.rec / D.tot : .5 + .45 * Math.sin((performance.now() - t0) / 700);   // (sin tamaño: vaivén)
+      fill.style.width = (100 * Math.max(.03, Math.min(1, k))).toFixed(1) + '%';
+      if (D.lista) { fill.style.width = '100%'; clearInterval(tm); tm = -1; setTimeout(arranca, 350); }
+    };
+    tm = setInterval(pinta, 150); pinta();
+  }, true);
 })();
 </script>
 </body>
