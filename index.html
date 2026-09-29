@@ -31,6 +31,8 @@
   portada se queda (fonógrafo en la mesa, vela titilando) y el propio botón se llena con una barra dorada («CARGANDO LA
   INTRODUCCIÓN») hasta el 100 %; entonces empieza como siempre. «MONTA TU FONÓGRAFO» sigue funcionando mientras carga.
   Si el navegador no deja descargarlo así, la introducción va como antes (por streaming).
+  Y (misma tarde) CURSOR QUIETO: durante la introducción, el cursor desaparece a los 2,5 s sin mover el ratón (bloque
+  «CURSOR QUIETO» antes de </body>; para quitarlo, borrar ese bloque).
   Es un bloque autónomo antes de </body> («CARGA DE LA INTRO»): para deshacerlo, borrar ese bloque (o volver a subir el
   index.html del commit 05c8b98).
 -->
@@ -3168,6 +3170,22 @@ window.__startPortal(THREE,RoundedBoxGeometry,plate);
     };
     tm = setInterval(pinta, 150); pinta();
   }, true);
+})();
+</script>
+
+<!-- (29-sep-2026, tarde, Iago) CURSOR QUIETO en la introducción: desaparece a los 2,5 s sin mover el ratón y vuelve al
+     moverlo. Para quitarlo: borrar este bloque. -->
+<style>body.fcQuieto #intro,body.fcQuieto #intro *{cursor:none!important}</style>
+<script>
+(function(){
+  var tm = null, B = document.body, I = document.getElementById('intro');
+  if (!I) return;
+  function mueve(){
+    B.classList.remove('fcQuieto'); clearTimeout(tm);
+    tm = setTimeout(function(){ if (I.classList.contains('on')) B.classList.add('fcQuieto'); }, 2500);
+  }
+  ['mousemove', 'pointerdown', 'keydown', 'touchstart'].forEach(function(t){ document.addEventListener(t, mueve, { passive: true }); });
+  try { new MutationObserver(function(){ if (I.classList.contains('on')) mueve(); else { clearTimeout(tm); B.classList.remove('fcQuieto'); } }).observe(I, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
 })();
 </script>
 </body>
