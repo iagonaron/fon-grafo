@@ -47,13 +47,17 @@
   Volver al 3D en vivo sin tocar nada: abrir la página con ?3d (p. ej. …/index.html?3d). Si falta monta/manifest.json,
   la página se pasa sola a ?3d. Para deshacerlo del todo: volver a subir el index.html anterior (la versión del 29-09-2026)
   y borrar la carpeta monta/. Todo marcado «(30-sep-2026)» o dentro del bloque «10 · VÍDEO».
-  (30-sep-2026, tarde, Iago: «no me acababa de parecer intuitivo, con las cosas por las esquinas» · «Puede poner tintineos
-  de lámparas, música de fondo suave para ambientar (cogida de la intro)») INTERFAZ 2 Y AMBIENTE (bloque «11», estilos en
-  <style id="ui2">): el texto de cada paso y su botón, abajo en el centro; flechas grandes en el montaje; los pasos arriba
-  en el centro; vistas, ajustes y «Música» arriba a la derecha; la máquina (indicadores y mandos) en el borde derecho; la
-  vela y el quinqué titilan. Música de la introducción (monta/ambiente.mp3), suave, que se aparta sola cuando la máquina
-  suena, con el micrófono y en los vídeos, y un tintineo de cristal de vez en cuando. Volver a la interfaz de antes, sin
-  música: abrir con ?ui1.
+  (30-sep-2026, Iago: «no me acababa de parecer intuitivo, con las cosas por las esquinas» · «música de fondo suave para
+  ambientar (cogida de la intro)») INTERFAZ 2 Y AMBIENTE (bloque «11», estilos en <style id="ui2">): el texto de cada paso
+  y su botón, abajo en el centro; flechas grandes en el montaje; los pasos arriba en el centro; vistas, ajustes y «Música»
+  arriba a la derecha; la máquina (indicadores y cuerda) en el borde derecho. Música de la introducción
+  (monta/ambiente.mp3), suave, que se aparta sola cuando la máquina suena, con el micrófono y en los vídeos.
+  (30-sep-2026, tarde, tras probarla Iago en su ordenador) la imagen entera y centrada ENCIMA de la tarjeta de abajo;
+  textos breves (fuera «Roble o nogal»); sin campanitas ni titileo de la vela: sonidos de piezas que se colocan; DAR
+  CUERDA DE VERDAD (mantener pulsado «Dar cuerda», junto al indicador: el porcentaje sube poco a poco; también en el paso 3
+  de «Escuchar»); sin «Apoyar» ni «Marcha» a la derecha durante el guion; «Pausa» en el modo libre; el paso del micrófono
+  en el plano del cilindro; el surco dorado se funde en vez de aparecer de golpe; fuera los pulsos que «se desprendían»
+  del cilindro al sonar. Volver a la interfaz de antes, sin nada de esto: abrir con ?ui1.
 -->
 
 <!-- Sentry (17-sep-2026): errores JS en produccion. Sin datos personales: solo el id anonimo de la cuenta como etiqueta. -->
@@ -2403,11 +2407,13 @@ function fxUpdate(dt,t){
   g.globalCompositeOperation='lighter'; g.lineCap='round'; g.lineJoin='round';
   var A0=fxOn;
   // canal: un hilo dorado muy tenue de la aguja a la boca
+  if(!VID){   // (30-sep-2026, tarde) en vídeo parecía que el surco dorado se despegaba del cilindro
   g.strokeStyle='rgba(255,196,110,'+(.10*A0*(.5+fxLv)).toFixed(3)+')'; g.lineWidth=5;
   g.beginPath(); g.moveTo(_fp[0][0],_fp[0][1]); for(i=1;i<n;i++) g.lineTo(_fp[i][0],_fp[i][1]); g.stroke();
   g.strokeStyle='rgba(255,214,140,'+(.22*A0*(.4+fxLv)).toFixed(3)+')'; g.lineWidth=1.3; g.stroke();
+  }
   // pulsos que recorren el camino (aguja → boca al reproducir; boca → aguja al grabar)
-  var NP=7;
+  var NP=VID?0:7;   // (30-sep-2026, tarde)
   for(k=0;k<NP;k++){
     var u=(fxT*.55+k/NP)%1; if(fxDir<0) u=1-u;
     var env=Math.sin(Math.PI*Math.min(1,Math.max(0,u)));
@@ -2819,7 +2825,7 @@ function tick(){
   }
   $('veil').style.opacity=FX.veil.toFixed(3);
   if(S.phase==='intro') return;            // durante el vídeo la escena 3D descansa
-  if(VID){ DIR.cuadro(dt); UI2.cuadro(); fxUpdate(dt,t); return; }   // (30-sep-2026) vídeo: el director elige qué se ve
+  if(VID){ DIR.cuadro(dt); UI2.cuadro(dt); fxUpdate(dt,t); return; }   // (30-sep-2026) vídeo: el director elige qué se ve
   SC3.setTips(phono.tipPlay.visible?'play':'rec');
   SC3.setExposure(FX.exp); SC3.setWork(FX.work);
   var gr=$('grade'); if(gr){ var go=(1-.55*FX.work).toFixed(2); if(gr._o!==go){ gr._o=go; gr.style.opacity=go; } }
@@ -3025,9 +3031,17 @@ var DIR = (function () {
     var st = $('stage'); st.parentNode.insertBefore(raiz, st);
     window.addEventListener('resize', coloca); coloca();
   }
+  var MARCO = null;   // (30-sep-2026, tarde) {x,y,w,h} en px: la imagen ocupa ese rectángulo (UI2 la deja entera encima de los carteles)
   function cubre() {
+    if (MARCO) return { s: MARCO.w / VW, x: MARCO.x, y: MARCO.y, px: .5 };
     var W = innerWidth, H = innerHeight, s = Math.max(W / VW, H / VH), px = (W / H < 16 / 9) ? .28 : .5;
     return { s: s, x: (W - VW * s) * px, y: (H - VH * s) * .5, px: px };
+  }
+  function ponMarco(m) {
+    MARCO = m; var cj = raiz && raiz.firstChild; if (!cj) return;
+    if (m) { cj.style.left = m.x.toFixed(1) + 'px'; cj.style.top = m.y.toFixed(1) + 'px'; cj.style.width = m.w.toFixed(1) + 'px'; cj.style.height = m.h.toFixed(1) + 'px'; cj.style.right = 'auto'; cj.style.bottom = 'auto'; }
+    else { cj.style.left = cj.style.top = cj.style.width = cj.style.height = cj.style.right = cj.style.bottom = ''; }
+    coloca();
   }
   function coloca() {
     var c = cubre();
@@ -3209,12 +3223,13 @@ var DIR = (function () {
     if (!v) return false;
     pon(v, n); v.loop = false; v.playbackRate = 1;
     clip = { id: id, el: v, fin: c.fin, t0: performance.now(), dur: c.dur };
-    ocultaBrillo(); vPatch.style.opacity = 0;
+    ocultaBrillo(.12); vPatch.style.opacity = 0;   // (30-sep-2026, tarde) el surco se va en un fundido cortísimo, no de golpe
+    if (!S.blank && MAN.brillo && /^op:/.test(c.fin || '')) { var pf = c.fin.split(':'); if (MAN.brillo[pf[1] + ':' + pf[3]]) preparaBrillo(pf[1] + ':' + pf[3]); }
     if (trav) { travFin(); }
     var ir = function () {
       try { v.currentTime = 0; } catch (x) {}
       var p = v.play(); if (p && p.catch) p.catch(function () {});
-      alPrimerFotograma(v, function () { arriba(v, corte ? 0 : .35); });
+      alPrimerFotograma(v, function () { arriba(v, corte ? 0 : .35); if (window.__alClip) { try { window.__alClip(id); } catch (x) {} } });
       L('clip ' + id + (corte ? ' (corte)' : ' (fundido)'));
     };
     if (v._listo) ir(); else v.addEventListener('loadeddata', function f() { v.removeEventListener('loadeddata', f); ir(); });
@@ -3301,28 +3316,37 @@ var DIR = (function () {
   }
 
   /* ── surco dorado (capa viva) ──────────────────────────────── */
-  function ocultaBrillo() { if (brillo.on) { cGlow.style.transition = 'opacity .25s'; cGlow.style.opacity = 0; brillo.on = 0; } }
+  function ocultaBrillo(ya) {         // ya: true = de golpe · un número = segundos de fundido (si no, 0,25 s)
+    if (brillo.on) { cGlow.style.transition = ya === true ? 'none' : 'opacity ' + (typeof ya === 'number' ? ya : .25) + 's'; cGlow.style.opacity = 0; brillo.on = 0; }
+  }
+  var CACHE_BRILLO = {};   // (30-sep-2026, tarde) cada plano del surco se prepara una vez; al volver a él o pasar al recorrido no se apaga
   function cuidaBrillo() {
     if (!MAN || !MAN.brillo || S.blank || clip) { ocultaBrillo(); return; }
     var clave = null, activo = false;
     if (cur === 'trav' && trav) { clave = 'BOC:A:trav'; activo = true; }
     else if (cur && cur.indexOf('op:') === 0) { var p = cur.split(':'); clave = p[1] + ':' + p[3]; }
+    ponBrillo(clave, activo, .6);
+  }
+  function brilloAntes() {            // (30-sep-2026, tarde, Iago: «aparece como de repente») el surco vuelve un poco ANTES de
+    if (!MAN.brillo || S.blank || !clip) return;   // que acabe el clip, cuando la cámara ya está casi quieta, y se funde
+    var v = clip.el, d = v.duration || clip.dur, falta = d - v.currentTime;
+    if (!(v.currentTime > 0) || !(falta < .55)) return;
+    var p = (clip.fin || '').split(':'); if (p[0] !== 'op') return;
+    ponBrillo(p[1] + ':' + p[3], false, Math.max(.2, falta));
+  }
+  function ponBrillo(clave, activo, fundido) {
     var b = clave && MAN.brillo[clave];
     if (!b) { ocultaBrillo(); return; }
     var ni = 'glow:' + b.img, na = 'glow:' + b.ax;
     if (!URLS[ni] || !URLS[na]) { encola(ni, true); encola(na, true); ocultaBrillo(); return; }
     var frac = Math.max(0, Math.min(1, S.recorded / Math.max(.001, S.cylLen)));
     var filas = Math.floor(frac * (MAN.acells || 28928) / (MAN.cols || 128));
+    if (clave === 'BOC:A') preparaBrillo('BOC:A:trav');   // el recorrido del cilindro, listo antes de pulsar «Reproducir»
     if (brillo.clave !== clave) {
-      brillo.clave = clave; brillo.filas = -1; brillo.datos = null; brillo.caja = b.caja;
+      var cd = CACHE_BRILLO[clave];
+      if (!cd || cd === 'cargando') { preparaBrillo(clave); ocultaBrillo(true); return; }
+      brillo.clave = clave; brillo.filas = -1; brillo.datos = cd; brillo.caja = b.caja;
       cGlow.width = b.caja[2]; cGlow.height = b.caja[3]; colocaCaja(cGlow, b.caja);
-      var i1 = new Image(), i2 = new Image(), n = 0;
-      var ok = function () { if (++n < 2 || brillo.clave !== clave) return;
-        var t = document.createElement('canvas'); t.width = b.caja[2]; t.height = b.caja[3]; var x = t.getContext('2d');
-        x.drawImage(i1, 0, 0); var D = x.getImageData(0, 0, t.width, t.height);
-        x.clearRect(0, 0, t.width, t.height); x.drawImage(i2, 0, 0); var A = x.getImageData(0, 0, t.width, t.height);
-        brillo.datos = { D: D, A: A }; brillo.filas = -1; };
-      i1.onload = ok; i2.onload = ok; i1.src = URLS[ni]; i2.src = URLS[na];
     }
     if (brillo.datos && filas !== brillo.filas) {
       brillo.filas = filas;
@@ -3335,22 +3359,53 @@ var DIR = (function () {
     }
     var g = SC3.brillo(), op = Math.max(0, Math.min(1, activo ? g / 1.5 : g / .5));
     if (!brillo.datos) op = 0;
-    cGlow.style.transition = brillo.on ? 'none' : 'opacity .25s';
+    cGlow.style.transition = brillo.on ? 'none' : 'opacity ' + (fundido || .6) + 's';
     cGlow.style.opacity = op.toFixed(3); brillo.on = op > 0 ? 1 : 0;
   }
 
+  function preparaBrillo(clave) {       // (30-sep-2026, tarde) carga y guarda el surco de un plano, sin tocar lo que se ve
+    if (CACHE_BRILLO[clave] || !MAN.brillo[clave]) return;
+    var b = MAN.brillo[clave], ni = 'glow:' + b.img, na = 'glow:' + b.ax;
+    if (!URLS[ni] || !URLS[na]) { encola(ni, true); encola(na, true); return; }
+    CACHE_BRILLO[clave] = 'cargando';
+    var i1 = new Image(), i2 = new Image(), n = 0;
+    var ok = function () { if (++n < 2) return;
+      var t = document.createElement('canvas'); t.width = b.caja[2]; t.height = b.caja[3]; var x = t.getContext('2d');
+      x.drawImage(i1, 0, 0); var D = x.getImageData(0, 0, t.width, t.height);
+      x.clearRect(0, 0, t.width, t.height); x.drawImage(i2, 0, 0); var A = x.getImageData(0, 0, t.width, t.height);
+      CACHE_BRILLO[clave] = { D: D, A: A }; };
+    i1.onload = ok; i2.onload = ok; i1.src = URLS[ni]; i2.src = URLS[na];
+  }
+
   /* ── manivela (Mandos a mano, aviso de cuerda) ─────────────── */
-  function manivela() {
+  function manivela(seguida) {
     if (!MAN || clip || !cur) return;
     var p = cur.split(':'), m = p[0] === 'op' && MAN.manivela && MAN.manivela[p[1]];
     if (!m) return;
     var n = 'mani:' + p[1]; if (!URLS[n]) { encola(n, true); return; }
     if (vPatch._uso !== n) { vPatch._uso = n; vPatch.src = URLS[n]; vPatch._caja = m.caja; colocaCaja(vPatch, m.caja); }
+    vPatch.loop = !!seguida;   // (30-sep-2026, tarde) mientras se mantiene pulsado «Dar cuerda», la manivela no para
+    vPatch._para = 0;
+    if (seguida && !vPatch.paused && +vPatch.style.opacity > 0) return;
     try { vPatch.currentTime = 0; } catch (x) {}
     vPatch.style.zIndex = 9999; var pr = vPatch.play(); if (pr && pr.catch) pr.catch(function () {});
     alPrimerFotograma(vPatch, function () { vPatch.style.opacity = 1; });
     vPatch.onended = function () { vPatch.style.opacity = 0; };
     L('manivela ' + p[1]);
+  }
+  function manivelaPara() {          // (30-sep-2026, tarde) al soltar: la manivela acaba la vuelta que lleva, hasta abajo
+    vPatch.loop = false;               // (el vídeo trae dos vueltas: abajo al principio, a la mitad y al final)
+    if (vPatch.paused || !(+vPatch.style.opacity > 0)) return 0;
+    var d = vPatch.duration || 2.75, t = vPatch.currentTime, fin = t < d / 2 - .04 ? d / 2 : d;
+    vPatch._para = fin;
+    return Math.max(0, fin - t);       // segundos que le faltan (el trinquete suena lo mismo)
+  }
+  function cuidaManivela() {
+    if (!vPatch._uso || !(+vPatch.style.opacity > 0)) return;
+    var otro = !cur || cur.split(':')[0] !== 'op' || cur.split(':')[1] !== vPatch._uso.slice(5);   // se cambió de plano
+    if (otro || clip || (vPatch._para && vPatch.currentTime >= vPatch._para - .02)) {
+      vPatch._para = 0; vPatch.loop = false; try { vPatch.pause(); } catch (x) {} vPatch.style.opacity = 0;
+    }
   }
 
   /* ── camino del sonido: puntos proyectados como en el 3D ───── */
@@ -3375,8 +3430,10 @@ var DIR = (function () {
   function cuadro(dt) {
     if (!MAN) return;
     precarga();
+    cuidaManivela();
     if (clip) {
       if (performance.now() - clip.t0 > (clip.dur + 2.5) * 1000) { L('clip ' + clip.id + ' sin «ended»: se cierra'); terminaClip(); }
+      else brilloAntes();
       return;
     }
     if (travActivo() && !trav) { travInicia(); }
@@ -3448,30 +3505,39 @@ var DIR = (function () {
   var PASOS = { rec: ['R_CUERDA', 'R_FRENO', 'R_AGUJA', null, null], play: ['P_LEVANTAR', 'P_ZAFIRO', 'P_MARCHA', 'P_APOYAR', null] };
   function paso(f, i) { var id = PASOS[f] && PASOS[f][i]; if (id) pideClip(id); }
   return {
-    inicia: inicia, cuadro: cuadro, clip: pideClip, paso: paso, manivela: manivela, anclas: anclas, proyecta: proyecta,
+    inicia: inicia, cuadro: cuadro, clip: pideClip, paso: paso, manivela: manivela, manivelaPara: manivelaPara, marco: ponMarco, anclas: anclas, proyecta: proyecta,
     set vista(n) { vista = n; }, get vista() { return vista; },
     ocupado: function () { return !!clip; }, actual: function () { return cur; } /* (30-sep-2026) para el titileo de las lámparas (UI2) */, esencial: esencial, estado: function () { return { cur: cur, clip: clip && clip.id, trav: !!trav, vista: vista, cargados: Object.keys(URLS).length, total: TOT, log: dbg.slice(-60) }; }
   };
 })();
 
-/* ═══ 11 · INTERFAZ 2 Y AMBIENTE (30-sep-2026) ═══════════════════════════════════════════════════════════════════
-   Iago: «Igual puedes rediseñar la interface de la forma que consideres… Puede haber el texto en el centro de la pantalla
-   grande, no sé, o flechas» · «no me acababa de parecer intuitivo, con las cosas por las esquinas» · «Puede poner
-   tintineos de lámparas, música de fondo suave para ambientar (cogida de la intro)».
-   · UI2 recoloca lo que ya había (los mismos botones con los mismos ids; los estilos van en <style id="ui2">) y añade:
-     los pasos del montaje arriba, la vista activa marcada, el botón «Música», el texto que entra suave al cambiar de paso
-     y el titileo de la vela y del quinqué sobre el vídeo.
-   · AMB: la música de la introducción (monta/ambiente.mp3: la pieza entera, suave, y otra vez tras un respiro) y un
-     tintineo de cristal de lámpara de vez en cuando. Se aparta sola en cuanto la máquina suena (manivela, motor, aguja,
-     grabación, reproducción), en los pasos del micrófono y de grabar (que no se cuele en la cera), en la introducción y
-     en los dos vídeos; vuelve, despacio, cuando todo se calla. El botón «Música» la quita y la pone (se recuerda).
-   Deshacer: …/index.html?ui1 → la interfaz de ayer, sin música ni titileo. Para quitarlo del todo: borrar este bloque,
-   el <style id="ui2"> y las dos llamadas «UI2.» (inicia y cuadro), y monta/ambiente.mp3. */
+/* ═══ 11 · INTERFAZ 2, AMBIENTE Y SONIDOS (30-sep-2026) ═══════════════════════════════════════════════════════════
+   Mañana, Iago: «Igual puedes rediseñar la interface…» · «no me acababa de parecer intuitivo, con las cosas por las esquinas».
+   Tarde, tras probarla en su ordenador: «necesito que lo que se esté viendo en pantalla esté centrado por encima de los
+   carteles» · «que el texto que acompaña al título sea breve» · «no me gusta… Roble o nogal» · «los sonidos de campanita…
+   no me convencen. Me gustan… como de piezas que se colocan» · «que sea literalmente dar cuerda… que el porcentaje vaya
+   subiendo» (y en el paso 3 de «Escuchar», otra vez) · «que no haya botón de apoyar y marcha» · «un botón de pausa para que
+   deje de hacer ruido» · «lo de la vela no me gustó» · micrófono: «un vídeo loop del cilindro girando en el primer plano».
+   · UI2 recoloca lo que ya había (mismos botones, mismos ids; estilos en <style id="ui2">) y además:
+     – LA IMAGEN, ENTERA Y ENCIMA DE LA TARJETA: el director encaja el vídeo en el hueco que deja la franja de abajo (se mide
+       la tarjeta más alta de cada fase para que no «respire» paso a paso); a los lados, negro con un degradado suave;
+     – textos breves (TOUR y FLOWS se reescriben al arrancar);
+     – DAR CUERDA DE VERDAD: se mantiene pulsado «Dar cuerda» (a la derecha, bajo el indicador «Cuerda») y la manivela gira,
+       suena el trinquete y el porcentaje sube poco a poco (un 28 % por vuelta). Paso 1 de «Grabar»: hasta el 100 %.
+       Paso 3 de «Escuchar»: otra vez hasta el 100 % y, entonces, «Soltar el freno». El aviso de cuerda baja la da solo,
+       también poco a poco. (Con el teclado: mantener pulsada la barra espaciadora.)
+     – en el guion, fuera «Levantar/Apoyar» y «Frenar/Marcha» del borde derecho: lo que toca hacer va en la tarjeta;
+     – modo libre: «Pausa» junto a «Volver a reproducir» (para el cilindro y el motor; «Continuar» sigue donde iba);
+     – paso del micrófono en el plano cercano del cilindro girando.
+   · AMB: la música de la introducción (monta/ambiente.mp3), suave; se aparta sola cuando la máquina suena. Botón «Música».
+   · SFX: sonidos de piezas que se colocan (madera, metal, cera, clic, latón), sintetizados aquí y sincronizados con cada
+     clip del montaje, y los de los mandos (freno, aguja, cabezal).
+   Deshacer: …/index.html?ui1 → la interfaz de antes, sin nada de esto. Para quitarlo del todo: borrar este bloque, el
+   <style id="ui2"> y las dos llamadas «UI2.» (inicia y cuadro), y monta/ambiente.mp3. */
 var AMB = (function () {
   'use strict';
   var NIVEL = 0.2;          // música: −14 dB sobre el fichero (en la intro iba a −8 dB sin voz y a −17 dB bajo la voz)
-  var NIVEL_TIN = 0.5;      // tintineos, sobre ese mismo nivel
-  var on = true, pedido = false, datos = null, buf = null, g = null, gT = null, obj = -1, prox = 0, fuente = null, tin = null, sigTin = 0, nTin = 0;
+  var on = true, pedido = false, datos = null, buf = null, g = null, obj = -1, prox = 0, fuente = null;
   try { if (localStorage.getItem('fonografo.musica') === '0') on = false; } catch (e) {}
   function carga() {
     if (pedido) return; pedido = true;
@@ -3484,39 +3550,7 @@ var AMB = (function () {
     var d = datos; datos = null;
     try { var p = A.ctx.decodeAudioData(d, function (b) { buf = b; }, function () {}); if (p && p.catch) p.catch(function () {}); } catch (e) {}
   }
-  function cristal(c, f0) {          // un tintineo: parciales inarmónicos de cristal que se apagan deprisa + el golpecito
-    var sr = c.sampleRate, n = Math.floor(sr * 1.5), b = c.createBuffer(1, n, sr), x = b.getChannelData(0), i, j, t, s, pk = 1e-9;
-    var P = [[1, 1, .8], [1.0035, .6, .9], [2.32, .42, .38], [4.25, .22, .2], [6.63, .1, .1]];   // (múltiplo, amplitud, caída en s)
-    for (i = 0; i < n; i++) {
-      t = i / sr; s = 0;
-      for (j = 0; j < P.length; j++) s += P[j][1] * Math.sin(2 * Math.PI * f0 * P[j][0] * t + j) * Math.exp(-t / P[j][2]);
-      x[i] = s * Math.min(1, t / .0012);
-    }
-    for (i = 0; i < Math.floor(sr * .004); i++) x[i] += (Math.random() * 2 - 1) * .35 * Math.exp(-i / (sr * .0007));
-    for (i = 0; i < n; i++) pk = Math.max(pk, Math.abs(x[i]));
-    for (i = 0; i < n; i++) x[i] /= pk;
-    return b;
-  }
-  function prepara() {
-    if (g || !A.ctx) return;
-    var c = A.ctx;
-    g = c.createGain(); g.gain.value = 0; g.connect(c.destination);
-    gT = c.createGain(); gT.gain.value = NIVEL_TIN; gT.connect(g);          // los tintineos pasan por el mismo apagado
-    tin = [2093, 2349.3, 2637, 3136, 3520].map(function (f) { return cristal(c, f); });   // do, re, mi, sol, la (6.ª octava)
-    sigTin = c.currentTime + 7 + Math.random() * 6;
-  }
-  function tintineo(t) {             // uno, a veces dos o tres seguidos; casi siempre desde el quinqué (derecha)
-    var c = A.ctx, golpes = Math.random() < .35 ? 2 + Math.floor(Math.random() * 2) : 1;
-    var pan = Math.random() < .7 ? .45 + Math.random() * .4 : -(.45 + Math.random() * .4), k, s, gg, p, dt = 0;
-    for (k = 0; k < golpes; k++) {
-      s = c.createBufferSource(); s.buffer = tin[Math.floor(Math.random() * tin.length)]; s.playbackRate.value = .97 + Math.random() * .06;
-      gg = c.createGain(); gg.gain.value = (k ? .5 : 1) * (.55 + Math.random() * .45); s.connect(gg);
-      if (c.createStereoPanner) { p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan + (Math.random() - .5) * .2)); gg.connect(p); p.connect(gT); }
-      else gg.connect(gT);
-      s.start(t + dt); dt += .1 + Math.random() * .18;
-    }
-    nTin++;
-  }
+  function prepara() { if (g || !A.ctx) return; g = A.ctx.createGain(); g.gain.value = 0; g.connect(A.ctx.destination); }
   function objetivo() {              // 0 = callada · 1 = a su nivel
     if (!on || document.hidden) return 0;
     var f = S.phase, c = $('cine');
@@ -3541,9 +3575,6 @@ var AMB = (function () {
       var s = c.createBufferSource(), t0 = Math.max(t + .05, prox);
       s.buffer = buf; s.connect(g); s.start(t0); fuente = s; prox = t0 + buf.duration + 4;
     }
-    if (tin && t >= sigTin) {
-      if (o > .5) { tintineo(t + .03); sigTin = t + 10 + Math.random() * 16; } else sigTin = t + 3 + Math.random() * 5;
-    }
   }
   function alterna() {
     on = !on;
@@ -3551,16 +3582,166 @@ var AMB = (function () {
     vigila(); return on;
   }
   function estado() { return { on: on, objetivo: obj, ganancia: g ? +g.gain.value.toFixed(4) : null, musica: !!buf, sonando: !!fuente,
-    t: A.ctx ? +A.ctx.currentTime.toFixed(2) : null, prox: +prox.toFixed(2), sigTin: +sigTin.toFixed(2), tintineos: nTin }; }   // (para las pruebas)
+    t: A.ctx ? +A.ctx.currentTime.toFixed(2) : null, prox: +prox.toFixed(2) }; }   // (para las pruebas)
   return { vigila: vigila, alterna: alterna, estado: estado, get on() { return on; } };
+})();
+
+var SFX = (function () {
+  'use strict';
+  /* Cada sonido se sintetiza una vez (unas décimas de segundo de audio) y se reutiliza. Nada de campanas: golpes cortos,
+     con cuerpo, como piezas de madera, hierro, cera y latón que se asientan. */
+  var B = {}, g = null, n = 0;
+  function bq(x, sr, tipo, f, Q) {                     // filtro biquad (RBJ) sobre el propio array
+    var w = 2 * Math.PI * f / sr, cs = Math.cos(w), al = Math.sin(w) / (2 * Q), b0, b1, b2, a0 = 1 + al, a1 = -2 * cs, a2 = 1 - al;
+    if (tipo === 'lp') { b0 = (1 - cs) / 2; b1 = 1 - cs; b2 = b0; }
+    else if (tipo === 'hp') { b0 = (1 + cs) / 2; b1 = -(1 + cs); b2 = b0; }
+    else { b0 = al; b1 = 0; b2 = -al; }
+    var x1 = 0, x2 = 0, y1 = 0, y2 = 0, i, y;
+    for (i = 0; i < x.length; i++) { y = (b0 * x[i] + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2) / a0; x2 = x1; x1 = x[i]; y2 = y1; y1 = y; x[i] = y; }
+  }
+  function tono(o, sr, t0, P) {                        // parciales que se apagan: [Hz, amplitud, caída en s]
+    var i0 = Math.floor(t0 * sr);
+    P.forEach(function (p, j) {
+      var m = Math.min(o.length - i0, Math.floor(p[2] * 7 * sr)), ph = j * 1.7, i, t;
+      for (i = 0; i < m; i++) { t = i / sr; o[i0 + i] += p[1] * Math.sin(2 * Math.PI * p[0] * t + ph) * Math.exp(-t / p[2]) * Math.min(1, t / .0008); }
+    });
+  }
+  function ruido(o, sr, t0, dur, amp, filtros, forma) {   // ruido filtrado: 'golpe' (seco), 'sube' (roce que crece), 'ola' (soplo)
+    var m = Math.floor(dur * sr), r = new Float32Array(m), i, u, e, i0 = Math.floor(t0 * sr);
+    for (i = 0; i < m; i++) r[i] = Math.random() * 2 - 1;
+    filtros.forEach(function (f) { bq(r, sr, f[0], f[1], f[2]); });
+    for (i = 0; i < m && i0 + i < o.length; i++) {
+      u = i / m;
+      e = forma === 'sube' ? u * u * (1 - Math.pow(u, 12)) : (forma === 'ola' ? Math.pow(Math.sin(Math.PI * u), 2) : Math.min(1, i / (sr * .0005)) * Math.exp(-u * 5));
+      o[i0 + i] += amp * r[i] * e;
+    }
+  }
+  var LARGO = { madera: .45, metal: .5, cera: .52, clic: .22, laton: .75, aire: .6, freno: .32, aguja: .16, cabezal: .6 };
+  var RECETA = {
+    madera: function (o, sr) {         // la caja sobre la mesa: golpe sordo de madera y un rebote pequeño
+      ruido(o, sr, 0, .022, .55, [['lp', 2400, .7]]);
+      tono(o, sr, 0, [[92, .9, .085], [184, .45, .05], [415, .32, .03], [870, .16, .016]]);
+      ruido(o, sr, .048, .012, .18, [['lp', 1800, .7]]);
+      tono(o, sr, .048, [[96, .28, .05], [430, .11, .02]]);
+    },
+    metal: function (o, sr) {          // el motor sobre la bancada de hierro: golpe grave y un clac metálico corto
+      ruido(o, sr, 0, .014, .5, [['bp', 3200, .9]]);
+      tono(o, sr, 0, [[68, .85, .11], [137, .4, .07], [612, .3, .05], [931, .22, .035], [1366, .15, .025], [2087, .09, .018]]);
+      ruido(o, sr, .034, .007, .14, [['bp', 2600, 1.2]]);
+      ruido(o, sr, .071, .006, .09, [['bp', 2900, 1.2]]);
+    },
+    cera: function (o, sr) {           // el cilindro entra en el portacilindros: roce que crece y «toc» amortiguado (a los 0,22 s)
+      ruido(o, sr, 0, .225, .2, [['bp', 1150, .8], ['lp', 3200, .7]], 'sube');
+      ruido(o, sr, .22, .014, .35, [['lp', 1500, .7]]);
+      tono(o, sr, .22, [[176, .75, .05], [352, .3, .03], [530, .22, .022]]);
+    },
+    clic: function (o, sr) {           // el cabezal se asienta: dos clics secos
+      [0, .028].forEach(function (t0, k) {
+        var a = k ? .6 : 1;
+        ruido(o, sr, t0, .004, .5 * a, [['hp', 1800, .7]]);
+        tono(o, sr, t0, [[2380, .35 * a, .012], [1130, .25 * a, .02], [240, .25 * a, .028]]);
+      });
+    },
+    laton: function (o, sr) {          // la bocina encaja: «tonc» hueco de latón, corto (sin campana)
+      ruido(o, sr, 0, .01, .35, [['bp', 1800, 1]]);
+      tono(o, sr, 0, [[158, .5, .15], [383, .38, .11], [694, .24, .06], [1215, .12, .035]]);
+      ruido(o, sr, 0, .2, .2, [['bp', 300, 4]]);
+    },
+    aire: function (o, sr) {           // una pieza que se levanta
+      ruido(o, sr, 0, .5, .28, [['bp', 650, .7], ['lp', 1800, .7]], 'ola');
+    },
+    freno: function (o, sr) {          // la palanca del freno
+      ruido(o, sr, 0, .006, .5, [['hp', 900, .7]]);
+      tono(o, sr, 0, [[948, .32, .03], [2310, .18, .015], [150, .4, .045]]);
+    },
+    aguja: function (o, sr) {          // la punta toca la cera
+      ruido(o, sr, 0, .005, .35, [['lp', 2600, .7]]);
+      tono(o, sr, 0, [[1600, .18, .012], [420, .12, .02]]);
+    },
+    cabezal: function (o, sr) {        // se retira un cabezal y se asienta el otro
+      RECETA.clic(o, sr);
+      tono(o, sr, .26, [[1830, .18, .035]]);
+      [.27, .298].forEach(function (t0, k) {
+        ruido(o, sr, t0, .004, (k ? .3 : .5), [['hp', 1800, .7]]);
+        tono(o, sr, t0, [[2380, .3, .012], [1130, .22, .02], [240, .22, .028]]);
+      });
+    }
+  };
+  function buffer(nombre) {
+    if (B[nombre]) return B[nombre];
+    var c = A.ctx, sr = c.sampleRate, m = Math.floor(LARGO[nombre] * sr), b = c.createBuffer(1, m, sr), o = b.getChannelData(0), i, pk = 1e-9;
+    RECETA[nombre](o, sr);
+    for (i = 0; i < m; i++) pk = Math.max(pk, Math.abs(o[i]));
+    for (i = 0; i < m; i++) o[i] *= .9 / pk;
+    var f = Math.floor(.012 * sr); for (i = 0; i < f; i++) o[m - 1 - i] *= i / f;
+    return (B[nombre] = b);
+  }
+  function suena(nombre, cuando, vol) {
+    if (!A.ctx || !A.master || !RECETA[nombre]) return;
+    var c = A.ctx;
+    if (!g) { g = c.createGain(); g.gain.value = .5; g.connect(A.master); }
+    var s = c.createBufferSource(); s.buffer = buffer(nombre); s.playbackRate.value = .96 + Math.random() * .08;
+    var gg = c.createGain(); gg.gain.value = vol == null ? 1 : vol; s.connect(gg); gg.connect(g);
+    s.start(Math.max(c.currentTime, cuando || 0)); n++;
+  }
+  /* segundos desde el primer fotograma de cada clip (el clic se grabó en su fotograma 1; cada pieza baja en su «dur» del
+     TOUR con frenada suave: se asienta hacia el 80 %). «cera» lleva 0,22 s de roce antes del golpe. */
+  var PLAN = {
+    MONTA: [['madera', 4.12]], PASO12: [['metal', .87]], PASO23: [['cera', .89]], PASO34: [['clic', .83]], PASO45: [['laton', .99]],
+    ANT21: [['aire', 0, .7], ['madera', .87, .45]], ANT32: [['aire', 0, .7], ['metal', .87, .45]],
+    ANT43: [['aire', 0, .7], ['cera', .89, .45]], ANT54: [['aire', 0, .7], ['clic', .83, .5]],
+    L_MONTAR: [['aire', 0, .7], ['aire', .35, .5], ['madera', .87, .4]],
+    R_FRENO: [['freno', .05]], P_MARCHA: [['freno', .05]], R_PIANO: [['freno', .05, .7]],
+    L_NUEVO_G: [['freno', .05, .7], ['cabezal', .15, .8]], L_NUEVO_Q: [['cabezal', .15, .8]],
+    R_AGUJA: [['aguja', .34]], P_APOYAR: [['aguja', .34]], P_LEVANTAR: [['aguja', .04, .6]], P_ZAFIRO: [['cabezal', .05]]
+  };
+  function alClip(id) {
+    var p = PLAN[id]; if (!p || !A.ctx) return;
+    var t = A.ctx.currentTime;
+    p.forEach(function (x) { suena(x[0], t + x[1], x[2]); });
+  }
+  return { alClip: alClip, suena: suena, muestra: function (x) { return A.ctx ? buffer(x).getChannelData(0) : null; }, get n() { return n; } };   // (muestra: para las pruebas)
 })();
 
 var UI2 = (function () {
   'use strict';
   var activa = VID && !/[?&]ui1/.test(location.search);
   var PIEZAS = ['Caja', 'Motor', 'Cilindro', 'Cabezal', 'Bocina'];
-  var fase = null, vistas = [], mus = null, luz = null, t0 = performance.now();
+  var LLENO = .98, POR_VUELTA = .28;
+  var fase = null, vistas = [], mus = null, pista = null, pausa = null, bordes = null;
   function entra(card) { if (!card) return; card.classList.remove('u2Entra'); void card.offsetWidth; card.classList.add('u2Entra'); }
+
+  /* ── textos breves (Iago: «que el texto que acompaña al título sea breve») ─────────────────────────────────── */
+  var TXT_TOUR = [
+    'Aquí empieza todo: la bancada de hierro fundido sostiene el mecanismo para que no baile.',
+    'Un muelle lo mueve todo a 160 rpm, y un husillo hace avanzar el carro <em>un surco por vuelta</em>.',
+    'Entra a presión en el portacilindros. Sale <em>liso</em>: el surco aparecerá cuando grabes.',
+    'Una mica finísima con una aguja en el centro: al grabar <em>talla</em> el surco; al reproducir, lo <em>lee</em>.',
+    'La misma boca para las dos cosas: recoge el sonido al grabar y lo devuelve a la sala al reproducir.'
+  ];
+  function textos() {
+    TOUR.forEach(function (t, i) { t.body = TXT_TOUR[i]; });
+    var r = FLOWS.rec.steps, p = FLOWS.play.steps;
+    r[0].body = 'Todo lo mueve un muelle. Mantén pulsado <b>Dar cuerda</b>, a la derecha, hasta el 100 %.';
+    r[0].run = function () {};                                     // la cuerda se da a la derecha, pulsando y manteniendo
+    r[0].ok = function () { return S.wind >= LLENO; };
+    r[1].body = 'El cilindro gira a 160 rpm y el regulador de bolas las mantiene. <em>Solo se oye el motor.</em>';
+    r[2].body = 'La punta baja sobre la cera. Ese siseo es el acero rozando: <em>se grabará con todo lo demás</em>.';
+    r[3].body = 'La bocina tiene que recoger el sonido de la sala. El audio no sale de este dispositivo ni se guarda.';
+    r[3].alt = 'O escuchar la muestra de piano';
+    r[3].view = 'cilindro';                                        // Iago: «un vídeo loop del cilindro girando en el primer plano»
+    r[4].body = 'Habla, canta o toca cerca de la bocina: verás tallarse el surco. Caben dos minutos.';
+    p[0].body = 'Lo primero, siempre: una punta de acero destroza en una vuelta un surco ya tallado.';
+    p[1].body = 'Fuera el grabador; entra el reproductor, con punta de <em>zafiro</em> que sigue el surco sin morderlo.';
+    p[2].tag = 'Cuerda'; p[2].title = 'Vuelve a dar cuerda';
+    p[2].body = 'La toma ha gastado cuerda. Mantén pulsado <b>Dar cuerda</b> hasta el 100 % y suelta el freno.';
+    p[2].btn = 'Soltar el freno';
+    p[2].run = function () { phono.crankSpin = Math.PI * 4; setBrake(false); S.carGoal = -.58; };   // (en el vídeo, la manivela da aún dos vueltas)
+    p[3].body = 'El zafiro se posa al principio del surco. Vuelve el siseo, más suave que con el acero.';
+    p[4].body = 'Esto es lo que la máquina pudo guardar: sin graves, sin brillo y con el color de la bocina.';
+  }
+
+  /* ── el montaje: sus pasos arriba ───────────────────────────────────────────────────────────────────────── */
   function pasosMontaje() {
     if (S.phase !== 'tour') return;
     var box = $('steps'); box.innerHTML = '';
@@ -3579,34 +3760,207 @@ var UI2 = (function () {
     mus.setAttribute('aria-pressed', AMB.on ? 'true' : 'false');
     mus.title = AMB.on ? 'Quitar la música de fondo' : 'Poner la música de fondo';
   }
-  function creaLuz() {               // titileo de la vela (izquierda) y del quinqué (derecha) sobre el vídeo
-    var v = $('vid'); if (!v) return;
-    luz = document.createElement('div'); luz.id = 'u2Luz'; luz.setAttribute('aria-hidden', 'true');
-    luz.innerHTML = '<i class="u2Sombra"></i><i class="u2Vela"></i><i class="u2Quinque"></i>';
-    v.appendChild(luz);
-    luz.s = luz.children[0]; luz.v = luz.children[1]; luz.q = luz.children[2];
-    encaja(); window.addEventListener('resize', encaja);
+
+  /* ── la cuerda: pulsar y mantener ───────────────────────────────────────────────────────────────────────── */
+  var cu = { pulsado: false, auto: false, crank0: 0, pct: -1 };
+  function pasoCuerda() {            // 'rec' (paso 1 de «Grabar») · 'play' (paso 3 de «Escuchar») · null
+    if (S.phase !== 'guide' || !G.flow) return null;
+    var st = FLOWS[G.flow].steps[G.i];
+    return st && st.tag === 'Cuerda' ? G.flow : null;
   }
-  function encaja() {                // la capa de luz ocupa exactamente el fotograma del vídeo (mismo «cover» que el director)
-    if (!luz) return;
+  function puedeCuerda() { return (S.phase === 'guide' || S.phase === 'libre') && S.springOn; }
+  function empieza(auto) {
+    if (!puedeCuerda() || S.wind >= .995) return;
+    if (auto) cu.auto = true; else cu.pulsado = true;
+    audioInit();
+    document.body.classList.add('u2Girando');
+  }
+  function suelta() {
+    if (!cu.pulsado && !cu.auto) return;
+    cu.pulsado = false; cu.auto = false;
+    document.body.classList.remove('u2Girando');
+    var resto = DIR.manivelaPara();  // lo que le falta a la manivela del vídeo para volver abajo (s); la de sonido, igual
+    phono.crankSpin = resto > 0 ? resto / 1.375 * Math.PI * 2 : Math.min(phono.crankSpin || 0, Math.PI * .5);
+  }
+  function cuidaCuerda() {
+    var girando = (cu.pulsado || cu.auto) && puedeCuerda();
+    if ((cu.pulsado || cu.auto) && (!girando || S.wind >= 1)) { suelta(); girando = false; }
+    if (girando && !DIR.ocupado()) {                               // (durante un clip se espera; al acabar, sigue)
+      if (!(phono.crankSpin > Math.PI * 1.5)) phono.crankSpin = Math.PI * 2;
+      DIR.manivela(true);
+    }
+    var d = CRANK - cu.crank0; cu.crank0 = CRANK;                  // cada vuelta de la manivela tensa el muelle
+    if (d > 0 && d < 1 && S.springOn && S.wind < 1) {
+      S.wind = Math.min(1, S.wind + d / (Math.PI * 2) * POR_VUELTA);
+      if (S.phase === 'guide') G.pressed = true;
+    }
+    if (pasoCuerda() === 'rec' && S.wind >= LLENO && !G.pressed) G.pressed = true;   // (con el muelle desactivado en Ajustes)
+    var p = Math.round(S.wind * 100);
+    if (p !== cu.pct) {
+      cu.pct = p;
+      $('gWind').textContent = p + ' %';
+      var e = $('u2Muelle'); if (e) e.firstChild.style.transform = 'scaleX(' + S.wind.toFixed(3) + ')';
+      if (pista) { pista.querySelector('.u2PPct').textContent = p + ' %'; pista.querySelector('.u2PBar i').style.transform = 'scaleX(' + S.wind.toFixed(3) + ')'; }
+    }
+    $('mCrank').disabled = S.wind >= .995 && !cu.pulsado;
+  }
+  function ataCuerda() {
+    var el = $('mCrank');
+    el.addEventListener('pointerdown', function (e) {
+      if (e.button > 0) return; e.preventDefault();
+      try { el.setPointerCapture(e.pointerId); } catch (x) {}
+      empieza(false);
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (n) { el.addEventListener(n, suelta); });
+    el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    el.addEventListener('keydown', function (e) {
+      if (e.key !== ' ' && e.key !== 'Enter') return;
+      e.preventDefault(); e.stopPropagation(); if (!e.repeat) empieza(false);
+    });
+    el.addEventListener('keyup', function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); suelta(); } });
+    // el clic de siempre (+45 % de golpe) ya no: la cuerda sube mientras se mantiene pulsado. El aviso la da solo, poco a poco.
+    document.addEventListener('click', function (e) {
+      var t = e.target && e.target.closest ? e.target.closest('#mCrank,#wwBtn') : null; if (!t) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      if (t.id === 'wwBtn') empieza(true);
+    }, true);
+    // barra espaciadora (o Intro) en los pasos de cuerda: mantener = dar cuerda
+    window.addEventListener('keydown', function (e) {
+      if (e.code !== 'Space' && e.key !== 'Enter') return;
+      if (!pasoCuerda() || S.wind >= LLENO || (e.target && /INPUT|BUTTON|SELECT|TEXTAREA/.test(e.target.tagName))) return;
+      e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) empieza(false);
+    }, true);
+    window.addEventListener('keyup', function (e) { if ((e.code === 'Space' || e.key === 'Enter') && cu.pulsado) suelta(); }, true);
+    window.addEventListener('blur', suelta);
+  }
+  function pintaPista() {            // la ayuda de la tarjeta en los pasos de cuerda
+    var pc = pasoCuerda(), lleno = S.wind >= LLENO, st = S.phase === 'guide' && G.flow && FLOWS[G.flow].steps[G.i];
+    document.body.classList.toggle('u2Cuerda', !!pc && !lleno);
+    document.body.classList.toggle('u2Suena', !!(st && st.meter));   // Pausa/Parar, solo en «Graba en la cera» y «Escucha…»
+    if (!pista) return;
+    pista.classList.toggle('u2Oculto', !pc);
+    pista.classList.toggle('lleno', lleno);
+    pista.classList.toggle('compacta', pc === 'play');
+    var gm = $('gMain');
+    gm.classList.toggle('u2Oculto', pc === 'rec');
+    if (pc === 'rec') gm.disabled = true;
+    else if (pc === 'play' && !lleno) gm.disabled = true;
+    var lbl = pc === 'play' ? (lleno ? 'Cuerda llena' : 'Antes, da cuerda →') : (lleno ? 'Cuerda llena' : 'Mantén pulsado');
+    var l = pista.querySelector('.u2PLbl'); if (l.textContent !== lbl) l.textContent = lbl;
+  }
+
+  /* ── modo libre: «Pausa» junto a «Volver a reproducir» ──────────────────────────────────────────────────── */
+  function suenaAlgo() { return S.mode === 'playing' || S.mode === 'paused' || S.mode === 'recording' || running(); }
+  function pintaPausa() {
+    if (!pausa) return;
+    var p = S.mode === 'paused', txt = p ? 'Continuar' : 'Pausa';
+    if (pausa.textContent !== txt) pausa.textContent = txt;
+    pausa.classList.toggle('on', p);
+    pausa.disabled = !suenaAlgo();
+  }
+  function creaPausa() {
+    pausa = document.createElement('button'); pausa.type = 'button'; pausa.id = 'u2Pausa'; pausa.className = 'btn plate big'; pausa.textContent = 'Pausa';
+    pausa.title = 'Para el cilindro y el motor';
+    var fp = $('fPlay'); fp.parentNode.insertBefore(pausa, fp.nextSibling);
+    pausa.addEventListener('click', function () {
+      audioInit().then(function () {
+        if (S.mode === 'paused') resumeAny();
+        else if (S.mode === 'playing' || S.mode === 'recording') pauseAny();   // (frena el motor: se calla todo)
+        else if (running()) setBrake(true);                                   // en reposo con el motor en marcha
+        gauges(); pintaPausa();
+      });
+    });
+  }
+
+  /* ── la imagen, entera y encima de la tarjeta ───────────────────────────────────────────────────────────── */
+  var MED = {}, marco = null, objetivo = null, puesto = false;
+  function u() { var r = parseFloat(getComputedStyle($('u2Pie')).rowGap); return r > 0 ? r / 1.1 : 10; }
+  function tipo() {
+    var f = S.phase, c = $('cine');
+    if (c && c.classList.contains('open')) return null;
+    if (f === 'tour' || f === 'despiece') return 'tour';
+    if (f === 'guide' || f === 'armada') return 'guide';
+    if (f === 'libre') return 'free';
+    return null;                                                   // portada, introducción: a pantalla completa, como siempre
+  }
+  function clon(id) {
+    var c = $(id).cloneNode(true);
+    c.classList.remove('hidden', 'u2Entra', 'mini');
+    c.style.position = 'absolute'; c.style.left = '0'; c.style.bottom = '0'; c.style.visibility = 'hidden'; c.style.pointerEvents = 'none';
+    $('u2Pie').appendChild(c);
+    return c;
+  }
+  function q(c, id) { return c.querySelector('#' + id); }
+  function mide(t) {                 // alto de la franja de abajo con la tarjeta más alta de esa fase (se mide una vez)
+    var k = t + ':' + innerWidth + 'x' + innerHeight;
+    if (MED[k]) return MED[k];
+    var c, max = 0;
+    if (t === 'tour') {
+      c = clon('tour');
+      TOUR.forEach(function (x, i) {
+        q(c, 'tourNum').textContent = 'Paso ' + (i + 1) + ' de ' + TOUR.length; q(c, 'tourTitle').textContent = x.title; q(c, 'tourBody').innerHTML = x.body;
+        max = Math.max(max, c.offsetHeight);
+      });
+    } else if (t === 'guide') {
+      c = clon('guide');
+      var tr = q(c, 'transport'); if (!tr) { tr = $('transport').cloneNode(true); q(c, 'gActions').appendChild(tr); }
+      tr.classList.remove('hidden'); tr.classList.add('u2Medido');
+      ['rec', 'play'].forEach(function (f) {
+        FLOWS[f].steps.forEach(function (st, i) {
+          q(c, 'gEyebrow').textContent = FLOWS[f].name + ' · paso ' + (i + 1) + ' de ' + FLOWS[f].steps.length;
+          q(c, 'gTitle').textContent = st.title; q(c, 'gBody').innerHTML = st.body; q(c, 'gMain').textContent = st.btn || '';
+          q(c, 'gMain').classList.toggle('u2Oculto', f === 'rec' && st.tag === 'Cuerda');
+          q(c, 'gAlt').classList.toggle('hidden', !st.alt); if (st.alt) q(c, 'gAlt').textContent = st.alt;
+          q(c, 'gAlt2').classList.add('hidden');
+          q(c, 'gMeter').classList.toggle('hidden', !st.meter); q(c, 'gMeter').textContent = '0:00 de 2:00  ·  0 surcos';
+          var pi = q(c, 'u2Pista'); if (pi) { pi.classList.toggle('u2Oculto', st.tag !== 'Cuerda'); pi.classList.toggle('compacta', f === 'play'); }
+          tr.classList.toggle('u2Oculto', !st.meter);
+          max = Math.max(max, c.offsetHeight);
+        });
+      });
+    } else { c = clon('free'); max = c.offsetHeight; }
+    c.parentNode.removeChild(c);
+    return (MED[k] = (parseFloat(getComputedStyle($('u2Pie')).bottom) || 0) + max + u() * 1.2);
+  }
+  function cubre() {
     var W = innerWidth, H = innerHeight, s = Math.max(W / 1920, H / 1080), px = (W / H < 16 / 9) ? .28 : .5;
-    luz.style.left = ((W - 1920 * s) * px).toFixed(1) + 'px'; luz.style.top = ((H - 1080 * s) * .5).toFixed(1) + 'px';
-    luz.style.width = (1920 * s).toFixed(1) + 'px'; luz.style.height = (1080 * s).toFixed(1) + 'px';
+    return { x: (W - 1920 * s) * px, y: (H - 1080 * s) * .5, h: 1080 * s, cubre: true };
   }
-  function titila(t) {               // la misma llama que tenía el 3D (plateUpdate): casi quieta, con algún tirón
-    if (!luz) return;
-    var f = 1 + .045 * Math.sin(t * 7.3) + .03 * Math.sin(t * 13.1 + 1) + .02 * Math.sin(t * 23.7 + 2) + .035 * Math.max(0, Math.sin(t * .9 + Math.sin(t * 2.3))) * Math.sin(t * 31);
-    var k = Math.max(0, Math.min(1, (f - .9) / .2));
-    var cur = DIR.actual() || '', plano = S.phase === 'boot' || /SAL|portada/.test(cur) ? 'sala' : (/GEN|T1@/.test(cur) ? 'gen' : 'cerca');
-    if (plano !== luz.plano) { luz.plano = plano; luz.className = 'p-' + plano; }
-    var nitida = plano === 'cerca' ? .6 : 1;         // en los primeros planos la vela está desenfocada: menos brillo
-    luz.s.style.opacity = Math.max(0, Math.min(.06, (1.035 - f) * .8)).toFixed(3);
-    luz.v.style.opacity = (nitida * (.5 + .45 * k)).toFixed(3);
-    luz.q.style.opacity = plano === 'cerca' ? '0' : (.3 + .25 * (1 + Math.sin(t * 5.1 + .7)) / 2).toFixed(3);
+  function calculaObjetivo() {
+    var t = tipo(), cb = cubre(); if (!t) return cb;
+    var W = innerWidth, H = innerHeight, abajo = mide(t), tj = $(t);
+    if (tj && !tj.classList.contains('hidden') && !tj.classList.contains('mini')) {   // si la de verdad es más alta, manda ella
+      var r = tj.getBoundingClientRect(); if (r.height > 0) abajo = Math.max(abajo, H - r.top + u() * 1.2);
+    }
+    // lo que se ve va del 5 % de arriba del fotograma (techo del despacho) al 96 %: el último 4 % queda bajo el borde de la
+    // tarjeta, ya fundido a negro (así no queda una franja oscura entre la imagen y la tarjeta)
+    var hueco = H - abajo, h = Math.max(H * .5, hueco / .91);
+    if (h >= cb.h - .5) return cb;
+    var w = h * 16 / 9;
+    return { x: w <= W ? (W - w) / 2 : (W - w) * .28, y: hueco - h * .96, h: h, cubre: false };
   }
+  function animaMarco(dt) {
+    var o = objetivo || cubre();
+    if (!marco) marco = { x: o.x, y: o.y, h: o.h };
+    var k = 1 - Math.exp(-Math.min(.1, dt || .016) / .16), mueve = false;
+    ['x', 'y', 'h'].forEach(function (p) { var d = o[p] - marco[p]; if (Math.abs(d) > .25) { marco[p] += d * k; mueve = true; } else if (d) { marco[p] = o[p]; mueve = true; } });
+    if (!mueve && puesto) return;
+    puesto = true;
+    var enCubre = o.cubre && Math.abs(o.h - marco.h) < .5, w = marco.h * 16 / 9;
+    DIR.marco(enCubre ? null : { x: marco.x, y: marco.y, w: w, h: marco.h });
+    if (bordes) {
+      bordes.style.left = marco.x.toFixed(1) + 'px'; bordes.style.top = marco.y.toFixed(1) + 'px';
+      bordes.style.width = w.toFixed(1) + 'px'; bordes.style.height = marco.h.toFixed(1) + 'px';
+      bordes.classList.toggle('on', !o.cubre);
+    }
+  }
+  function olvidaMedidas() { MED = {}; }
+
+  /* ── arranque ───────────────────────────────────────────────────────────────────────────────────────────── */
   function inicia() {
     if (!activa) return;
     document.body.classList.add('ui2');
+    textos();
     var pie = document.createElement('div'); pie.id = 'u2Pie'; document.body.appendChild(pie);
     ['windWarn', 'tour', 'guide', 'free'].forEach(function (id) { var e = $(id); if (e) pie.appendChild(e); });
     var pad = $('pad'), sep = document.createElement('i'); sep.className = 'u2Sep'; pad.appendChild(sep);
@@ -3616,14 +3970,32 @@ var UI2 = (function () {
     mus.addEventListener('click', function () { if (A.ctx) AMB.alterna(); else audioInit().then(function () { AMB.alterna(); }); pintaMusica(); });
     pintaMusica();
     vistas = [].slice.call(pad.querySelectorAll('.btn[data-view]'));
-    creaLuz();
+    // la cuerda, junto a su indicador: barra del muelle y botón «Dar cuerda» (mantener pulsado)
+    var fila = $('gauges').querySelector('.row'), barra = document.createElement('div');
+    barra.id = 'u2Muelle'; barra.setAttribute('aria-hidden', 'true'); barra.appendChild(document.createElement('i'));
+    fila.parentNode.insertBefore(barra, fila.nextSibling);
+    var mc = $('mCrank'); barra.parentNode.insertBefore(mc, barra.nextSibling);
+    mc.title = 'Mantén pulsado para dar cuerda'; mc.setAttribute('aria-label', 'Dar cuerda: mantén pulsado');
+    ataCuerda();
+    // la ayuda de la tarjeta en los pasos de cuerda
+    pista = document.createElement('div'); pista.id = 'u2Pista'; pista.className = 'u2Oculto'; pista.setAttribute('aria-live', 'polite');
+    pista.innerHTML = '<span class="u2PLbl">Mantén pulsado</span><span class="u2PBtn">«Dar cuerda» <i aria-hidden="true">→</i></span>' +
+      '<span class="u2PPct">0 %</span><span class="u2PBar" aria-hidden="true"><i></i></span>';
+    $('gActions').insertBefore(pista, $('gActions').firstChild);
+    creaPausa();
+    // el marco del vídeo y sus bordes
+    var vid = $('vid'); if (vid) { bordes = document.createElement('div'); bordes.id = 'u2Bordes'; bordes.setAttribute('aria-hidden', 'true'); vid.insertBefore(bordes, vid.children[1] || null); }
+    window.addEventListener('resize', olvidaMedidas);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(olvidaMedidas);
+    if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', olvidaMedidas);
     // el montaje: sus pasos arriba y el texto que entra
     var mp = montPaso;
     montPaso = function (i) { var a = S.tourStep; mp(i); pasosMontaje(); if (i !== a || !$('tour').classList.contains('u2Entra')) entra($('tour')); };
-    // el guion: el texto entra al cambiar de paso
+    // el guion: el texto entra al cambiar de paso; la ayuda de la cuerda
     var rs = renderStep;
-    renderStep = function () { var a = $('gTitle').textContent; rs(); if ($('gTitle').textContent !== a) entra($('guide')); };
-    setInterval(vigila, 150); window.__AMB = AMB;
+    renderStep = function () { var a = $('gTitle').textContent; rs(); pintaPista(); if ($('gTitle').textContent !== a) entra($('guide')); };
+    window.__alClip = SFX.alClip;
+    setInterval(vigila, 150); window.__AMB = AMB; window.__SFX = SFX; window.__UI2 = { marco: function () { return marco; }, objetivo: function () { return objetivo; }, mide: mide };
     document.addEventListener('visibilitychange', function () { AMB.vigila(); });
   }
   function vigila() {
@@ -3634,9 +4006,15 @@ var UI2 = (function () {
     var v = DIR.vista === 'bocinaRec' ? 'bocina' : DIR.vista;
     vistas.forEach(function (b) { b.classList.toggle('u2Vista', b.getAttribute('data-view') === v); });
     document.body.classList.toggle('u2Ocupado', DIR.ocupado());
+    pintaPista(); pintaPausa();
+    objetivo = calculaObjetivo();
     AMB.vigila();
   }
-  function cuadro() { if (activa) titila((performance.now() - t0) / 1000); }
+  function cuadro(dt) {
+    if (!activa) return;
+    animaMarco(dt);
+    cuidaCuerda();
+  }
   return { inicia: inicia, cuadro: cuadro, get activa() { return activa; } };
 })();
 
@@ -4012,7 +4390,7 @@ body.ui2 #free::before{content:"Modo libre";grid-column:1/-1;font-family:var(--l
   letter-spacing:.22em;text-transform:uppercase;color:var(--u2brass);margin:0 0 calc(var(--u)*.2) calc(var(--u)*.3)}
 body.ui2 #free>div:not(#transport){display:contents!important}   /* (las dos filas llevan display:flex en línea) */
 body.ui2 #free>[data-cine]{display:none}
-body.ui2 #fPlay{grid-column:1/-1;min-height:calc(var(--u)*6.8);font-size:calc(var(--u)*2.05);font-weight:800;border-radius:calc(var(--u)*1.3);
+body.ui2 #fPlay{grid-row:2;grid-column:1/span 2;min-height:calc(var(--u)*6.8);font-size:calc(var(--u)*2.05);font-weight:800;border-radius:calc(var(--u)*1.3);
   background:var(--u2gold);color:var(--u2ink);border:0;box-shadow:0 calc(var(--u)*.6) calc(var(--u)*2) rgba(0,0,0,.5)}
 body.ui2 #fPlay::before{content:"";width:.75em;height:.75em;margin-right:.6em;background:currentColor;
   -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 1v8l7-4z'/%3E%3C/svg%3E") center/contain no-repeat;
@@ -4022,10 +4400,18 @@ body.ui2 #free .btn:not(#fPlay){min-height:calc(var(--u)*4.8);font-size:calc(var
 body.ui2 #fAB,body.ui2 #fNew{grid-row:3}
 body.ui2 #fPre{grid-row:3;grid-column:3;color:var(--u2txt)!important;border:1px solid rgba(224,182,90,.3)!important}
 body.ui2 #fAB.on{background:rgba(224,182,90,.18);border-color:#E0B65A;color:var(--u2soft)}
-body.ui2 #free>#transport{grid-row:4;grid-column:1;display:flex;margin:0}
-body.ui2 #free>#transport .btn{width:auto;flex:1!important;min-width:0}
-body.ui2 #fTour{grid-row:4;grid-column:2;color:var(--u2txt)!important;border:1px solid rgba(224,182,90,.3)!important}
+body.ui2 #free>#transport{display:none!important}   /* (tarde) su «Pausa» es ahora la de la primera fila */
+body.ui2 #fTour{grid-row:4;grid-column:1/span 2;color:var(--u2txt)!important;border:1px solid rgba(224,182,90,.3)!important}
 body.ui2 #fExit{grid-row:4;grid-column:3}
+/* (30-sep-2026, tarde, Iago: «un botón de pausa para que deje de hacer ruido») */
+body.ui2 #u2Pausa{grid-row:2;grid-column:3;min-height:calc(var(--u)*6.8)!important;font-size:calc(var(--u)*1.9)!important;font-weight:800;
+  border-radius:calc(var(--u)*1.3)!important;background:rgba(224,182,90,.1);color:var(--u2soft);border:1px solid rgba(224,182,90,.7)}
+body.ui2 #u2Pausa::before{content:"";width:.72em;height:.72em;margin-right:.55em;flex:none;background:currentColor;
+  -webkit-mask:var(--ico) center/contain no-repeat;mask:var(--ico) center/contain no-repeat;
+  --ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect x='1.5' y='1' width='2.4' height='8' rx='.6'/%3E%3Crect x='6.1' y='1' width='2.4' height='8' rx='.6'/%3E%3C/svg%3E")}
+body.ui2 #u2Pausa.on::before{--ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 1v8l7-4z'/%3E%3C/svg%3E")}
+body.ui2 #u2Pausa:hover:not(:disabled){background:rgba(224,182,90,.2);color:#FFF3DC}
+body.ui2 #u2Pausa:disabled{opacity:.32}
 
 /* ── avisos: cuerda baja justo encima de la tarjeta; el aviso corto, arriba bajo los pasos ─────────────────── */
 body.ui2 #windWarn{position:relative;left:auto;bottom:auto;top:auto;transform:none!important;margin:0;
@@ -4081,24 +4467,55 @@ body.ui2 #manual .padLbl{display:block!important;font-size:calc(var(--u)*1.02);l
 body.ui2 #manual .btn,body.ui2 #bTour{min-height:calc(var(--u)*4.3);font-size:calc(var(--u)*1.35);border-radius:calc(var(--u)*1)}
 body.ui2 #manual div[style]{gap:calc(var(--u)*.5)!important;margin-top:calc(var(--u)*.5)!important}
 body.ui2 #bTour{background:rgba(18,13,9,.8);border:1px solid var(--u2line);color:var(--u2txt)}
+/* (30-sep-2026, tarde, Iago: «que no haya botón de apoyar y marcha… luego ya te guía abajo») */
+body.ui2.u2-guide #manual{display:none}
+/* la cuerda, junto a su indicador: barra del muelle y «Dar cuerda» (se mantiene pulsado; el porcentaje sube poco a poco) */
+body.ui2 #u2Muelle{height:calc(var(--u)*.55);border-radius:99px;background:rgba(224,182,90,.13);overflow:hidden;margin:calc(var(--u)*.15) 0 0}
+body.ui2 #u2Muelle i{display:block;height:100%;background:var(--u2gold);transform-origin:0 50%;transform:scaleX(0)}
+body.ui2 #gauges #mCrank{width:100%;margin:calc(var(--u)*.8) 0 calc(var(--u)*.6);min-height:calc(var(--u)*4.4);font-size:calc(var(--u)*1.4);
+  border-radius:calc(var(--u)*1);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+body.ui2 #mCrank::before{content:"";width:1.1em;height:1.1em;margin-right:.5em;flex:none;background:currentColor;
+  -webkit-mask:var(--ico) center/contain no-repeat;mask:var(--ico) center/contain no-repeat;
+  --ico:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 12a8 8 0 1 1-2.35-5.65'/%3E%3Cpath d='M20 3.5v5h-5'/%3E%3C/svg%3E")}
+body.ui2 #mCrank:disabled{opacity:.4}
+body.ui2.u2Cuerda #mCrank{background:var(--u2gold);color:var(--u2ink);border:0;animation:u2Latido 2.6s ease-in-out infinite}
+body.ui2.u2Cuerda #gauges{border-color:rgba(224,182,90,.7);box-shadow:0 0 0 1px rgba(224,182,90,.25),0 calc(var(--u)*1) calc(var(--u)*3) rgba(0,0,0,.45)}
+body.ui2.u2Cuerda #gauges .row:first-child .k,body.ui2.u2Cuerda #gauges .row:first-child .v{color:#FFE3A3}
+body.ui2.u2Girando #mCrank{animation:none;transform:translateY(1px);filter:brightness(.94)}
+body.ui2.u2Girando #mCrank::before{animation:u2Gira .9s linear infinite}
+@keyframes u2Gira{to{transform:rotate(360deg)}}
+/* la ayuda de la tarjeta en los pasos de cuerda (a la derecha de la tarjeta, señalando al botón) */
+body.ui2 #u2Pista{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:calc(var(--u)*.5) calc(var(--u)*1);
+  padding:calc(var(--u)*1.1) calc(var(--u)*1.5) calc(var(--u)*1.3);border-radius:calc(var(--u)*1.3);border:1px dashed rgba(224,182,90,.65);
+  background:rgba(224,182,90,.07)}
+body.ui2 #u2Pista .u2PLbl{grid-column:1/-1;font-family:var(--lm-font);font-weight:700;font-size:calc(var(--u)*1.05);letter-spacing:.2em;
+  text-transform:uppercase;color:var(--u2brass)}
+body.ui2 #u2Pista .u2PBtn{font-size:calc(var(--u)*2);font-weight:800;color:#FFF3DC;white-space:nowrap;line-height:1.15}
+body.ui2 #u2Pista .u2PBtn i{display:inline-block;font-style:normal;color:var(--u2brass);margin-left:.25em;animation:u2Empuja 1.4s ease-in-out infinite}
+@keyframes u2Empuja{50%{transform:translateX(.35em)}}
+body.ui2 #u2Pista .u2PPct{font-family:var(--lm-num);font-size:calc(var(--u)*1.7);color:var(--u2soft);font-variant-numeric:tabular-nums}
+body.ui2 #u2Pista .u2PBar{grid-column:1/-1;height:calc(var(--u)*.7);border-radius:99px;background:rgba(224,182,90,.15);overflow:hidden}
+body.ui2 #u2Pista .u2PBar i{display:block;height:100%;background:var(--u2gold);transform-origin:0 50%;transform:scaleX(0)}
+body.ui2 #u2Pista.lleno{border-style:solid;border-color:rgba(224,182,90,.85)}
+body.ui2 #u2Pista.lleno .u2PBtn{display:none}
+body.ui2 #u2Pista.lleno .u2PLbl::after{content:" ✓";letter-spacing:0}
+body.ui2 #u2Pista.compacta{padding:calc(var(--u)*.9) calc(var(--u)*1.4) calc(var(--u)*1.1)}
+body.ui2 #u2Pista.compacta .u2PLbl{grid-column:1;font-size:calc(var(--u)*1.15)}
+body.ui2 #u2Pista.compacta .u2PBtn{display:none}
+body.ui2 #u2Pista.compacta .u2PPct{font-size:calc(var(--u)*1.45)}
+/* en el guion, «Pausa» y «Parar» solo en los dos pasos que suenan (en los demás no hay nada que parar) */
+body.ui2.u2-guide:not(.u2Suena) #gActions>#transport:not(.u2Medido){display:none}
 body.ui2 #bTour:hover{color:var(--u2soft);border-color:rgba(224,182,90,.6)}
 
 /* ── arriba a la izquierda: los dos vídeos, en una fila bajo la marca ────────────────────────────────────── */
 body.ui2 #cineTabs{top:calc(var(--u)*6.6);left:calc(var(--u)*2.2);flex-direction:row;gap:calc(var(--u)*.7)}
 body.ui2 .cineTab{font-size:calc(var(--u)*1.25);padding:calc(var(--u)*.75) calc(var(--u)*1.3);border-radius:999px}
 
-/* ── titileo de la vela (izquierda) y del quinqué (derecha) sobre el vídeo: la capa ocupa el fotograma entero ──────────── */
-#u2Luz{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:3}
-#u2Luz i{position:absolute;display:block;will-change:opacity;opacity:0;transition:left .8s ease,top .8s ease}
-#u2Luz .u2Sombra{left:0;top:0;width:100%;height:100%;background:#000}
-#u2Luz .u2Vela{left:9.8%;top:18.8%;width:15%;height:26%;transform:translate(-50%,-50%);mix-blend-mode:screen;
-  background:radial-gradient(ellipse at center,rgba(255,196,110,.34) 0%,rgba(255,150,60,.14) 32%,rgba(255,120,40,0) 70%)}
-#u2Luz.p-sala .u2Vela{left:12.7%;top:21%}
-#u2Luz.p-gen .u2Vela{left:11.1%;top:19.4%}
-#u2Luz .u2Quinque{left:92.4%;top:26.6%;width:9%;height:16%;transform:translate(-50%,-50%);mix-blend-mode:screen;
-  background:radial-gradient(ellipse at center,rgba(255,190,110,.26) 0%,rgba(255,150,60,.1) 35%,rgba(255,120,40,0) 70%)}
-#u2Luz.p-gen .u2Quinque{left:94.4%;top:25.4%}
-@media (prefers-reduced-motion:reduce){ #u2Luz{display:none} }
+/* ── (30-sep-2026, tarde) la imagen encajada encima de la tarjeta: a los lados y abajo, negro con un degradado suave ── */
+#u2Bordes{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .6s;
+  background:linear-gradient(90deg,#050403 0,rgba(5,4,3,0) 5%,rgba(5,4,3,0) 95%,#050403 100%),linear-gradient(0deg,#050403 0,#050403 2%,rgba(5,4,3,0) 11%)}
+#u2Bordes.on{opacity:1}
+body.ui2 .u2Oculto{display:none!important}
 
 /* ── pantallas medianas y pequeñas ───────────────────────────────────────────────────────────────────── */
 @media (max-width:1760px){          /* la fila de arriba no cabe entera: pasos compactos (solo el nombre del actual) e iconos */
@@ -4134,7 +4551,7 @@ body.ui2 .cineTab{font-size:calc(var(--u)*1.25);padding:calc(var(--u)*.75) calc(
 @media (min-width:2300px){ body.ui2 #maker,body.ui2 #fsBtn{zoom:1.5} }
 @media (min-width:3000px){ body.ui2 #maker,body.ui2 #fsBtn{zoom:2} }
 @media (prefers-reduced-motion:reduce){
-  body.ui2 #gMain,body.ui2 #tNext::before,body.ui2 #gMain.on::before{animation:none!important}
+  body.ui2 #gMain,body.ui2 #tNext::before,body.ui2 #gMain.on::before,body.ui2 #mCrank,body.ui2 #mCrank::before,body.ui2 #u2Pista .u2PBtn i{animation:none!important}
   body.ui2 .u2Entra #tourTitle,body.ui2 .u2Entra #tourBody,body.ui2 .u2Entra #gTitle,body.ui2 .u2Entra #gBody{animation:none}
 }
 </style>
