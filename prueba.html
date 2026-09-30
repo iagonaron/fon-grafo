@@ -58,6 +58,12 @@
   de «Escuchar»); sin «Apoyar» ni «Marcha» a la derecha durante el guion; «Pausa» en el modo libre; el paso del micrófono
   en el plano del cilindro; el surco dorado se funde en vez de aparecer de golpe; fuera los pulsos que «se desprendían»
   del cilindro al sonar. Volver a la interfaz de antes, sin nada de esto: abrir con ?ui1.
+  (30-sep-2026, noche, Iago: «que la madera tenga imperfecciones… algo más realista» · «el cilindro, demasiado oscuro» ·
+  «que las muescas doradas estén todo el rato presentes») VÍDEOS GRABADOS DE NUEVO (monta/manifest.json con v: 2): madera
+  con vetas, rugosidad y zonas gastadas (el brillo cambia por la superficie); cilindro más claro y mejor iluminado; el
+  surco dorado sigue al cilindro fotograma a fotograma también en los vídeos y no desaparece una vez grabado (hojas
+  monta/glow/clip_*); los bucles encadenan sin tirón (Media Source; con ?nomse, el bucle de antes). Los vídeos de la
+  tarde siguen en el historial de GitHub (commit 4a80c1b de fon-grafo) por si hubiera que volver a ellos.
 -->
 
 <!-- Sentry (17-sep-2026): errores JS en produccion. Sin datos personales: solo el id anonimo de la cuenta como etiqueta. -->
@@ -3006,7 +3012,7 @@ function createVideoScene(THREE, RoundedBoxGeometry, opts) {
 var DIR = (function () {
   'use strict';
   var BASE = 'monta/', VW = 1920, VH = 1080;
-  var MAN = null, H264 = false, URLS = {}, COLA_DESC = [], BAJANDO = 0, TOT = 0, REC = 0;
+  var MAN = null, H264 = false, URLS = {}, BLOBS = {}, COLA_DESC = [], BAJANDO = 0, TOT = 0, REC = 0;
   var raiz, capas = [], cGlow, gCtx, vPatch, Z = 10;
   var cur = null, visible = null, clip = null, vista = 'sala', trav = null, cola = null, pasa = false;
   var brillo = { clave: '', filas: -1, img: null, ax: null, datos: null, on: 0 };
@@ -3089,11 +3095,84 @@ var DIR = (function () {
   function pon(e, nombre) {          // carga un recurso (ya descargado) en una capa
     if (e._uso === nombre) return true;
     var u = URLS[nombre]; if (!u) return false;
+    if (e._mse) { e._mse.parado = true; e._mse = null; }
     e._uso = nombre; e._listo = false;
+    if (e._tipo === 'video' && nombre.indexOf('bucle:') === 0 && bucleMSE(e, nombre)) {
+      e.addEventListener('loadeddata', function f() { e.removeEventListener('loadeddata', f); e._listo = true; }); return true;
+    }
     if (e._tipo === 'img') { e.src = u; (e.decode ? e.decode() : Promise.resolve()).then(function () { e._listo = true; }, function () { e._listo = true; }); }
     else { e.src = u; e.load(); e.addEventListener('loadeddata', function f() { e.removeEventListener('loadeddata', f); e._listo = true; }); }
     return true;
   }
+  /* (30-sep-2026, tarde) BUCLES SIN TIRÓN. Con el bucle nativo, al volver al principio el navegador busca el fotograma 0 y el
+     cilindro se para un instante (Iago: «se frena el cilindro y vuelve a arrancar»). Con Media Source se pone la misma vuelta
+     detrás, una y otra vez (timestampOffset): la reproducción nunca vuelve atrás. Si el navegador no lo admite (iPhone…), o
+     falla algo, bucle nativo como antes. Los MP4 de la v2 vienen fragmentados y sin fotogramas B (los de la v1, no: nativo). */
+  function tipoMSE() {
+    var M = window.MediaSource; if (!M || /[?&]nomse/.test(location.search)) return null;
+    var t = H264 ? ((MAN && (MAN.v || 1) >= 2) ? 'video/mp4; codecs="avc1.640032"' : null) : 'video/webm; codecs="vp9"';
+    return t && M.isTypeSupported(t) ? t : null;
+  }
+  function bucleMSE(e, nombre) {
+    var mime = tipoMSE(), blob = BLOBS[nombre]; if (!mime || !blob || !blob.arrayBuffer) return false;
+    var ms = new MediaSource(), st = { ms: ms, sb: null, ab: null, dur: 0, k: 0, parado: false, nombre: nombre, n: 0 };
+    ms.addEventListener('sourceopen', function () {
+      if (st.parado) return;
+      try { st.sb = ms.addSourceBuffer(mime); st.sb.mode = 'segments'; } catch (x) { return mseFalla(e, st, x); }
+      st.sb.addEventListener('updateend', function () {
+        if (!st.dur && st.sb.buffered.length) st.dur = st.sb.buffered.end(st.sb.buffered.length - 1);
+      });
+      st.sb.addEventListener('error', function (x) { mseFalla(e, st, x); });
+      blob.arrayBuffer().then(function (ab) { if (st.parado) return; ab = limpiaMP4(ab);
+        var i0 = inicioMedios(ab); st.ab = i0 > 0 && !/[?&]mseentero/.test(location.search) ? ab.slice(i0) : ab;   // las vueltas siguientes, sin la cabecera
+        try { st.sb.appendBuffer(ab); st.k = 1; st.n++; } catch (x) { mseFalla(e, st, x); } });
+    }, { once: true });
+    e._mse = st; e.src = URL.createObjectURL(ms); e.load();
+    return true;
+  }
+  function limpiaMP4(ab) {            // solo las cajas que entiende Media Source (fuera 'uuid' de procedencia C2PA, 'free', 'mfra'…)
+    var d = new DataView(ab), u8 = new Uint8Array(ab), pos = 0, trozos = [], total = 0, ok = { ftyp: 1, moov: 1, moof: 1, mdat: 1, styp: 1, sidx: 1 };
+    if (ab.byteLength < 8 || String.fromCharCode(u8[4], u8[5], u8[6], u8[7]) !== 'ftyp') return ab;   // (WebM u otro: tal cual)
+    while (pos + 8 <= ab.byteLength) {
+      var sz = d.getUint32(pos), t = String.fromCharCode(u8[pos + 4], u8[pos + 5], u8[pos + 6], u8[pos + 7]);
+      if (sz === 1) sz = d.getUint32(pos + 8) * 4294967296 + d.getUint32(pos + 12); else if (sz === 0) sz = ab.byteLength - pos;
+      if (sz < 8 || pos + sz > ab.byteLength) break;
+      if (ok[t]) { trozos.push(u8.subarray(pos, pos + sz)); total += sz; }
+      pos += sz;
+    }
+    if (total === ab.byteLength) return ab;
+    var out = new Uint8Array(total), o = 0; trozos.forEach(function (x) { out.set(x, o); o += x.length; });
+    return out.buffer;
+  }
+  function inicioMedios(ab) {         // dónde empiezan los datos (tras la cabecera): 1.er 'moof' (MP4) o 1.er Cluster (WebM)
+    var u8 = new Uint8Array(ab), i;
+    if (u8.length > 8 && String.fromCharCode(u8[4], u8[5], u8[6], u8[7]) === 'ftyp') {
+      var d = new DataView(ab), pos = 0;
+      while (pos + 8 <= u8.length) { var sz = d.getUint32(pos); if (String.fromCharCode(u8[pos + 4], u8[pos + 5], u8[pos + 6], u8[pos + 7]) === 'moof') return pos; if (sz < 8) break; pos += sz; }
+      return 0;
+    }
+    for (i = 0; i + 4 <= u8.length; i++) if (u8[i] === 0x1F && u8[i + 1] === 0x43 && u8[i + 2] === 0xB6 && u8[i + 3] === 0x75) return i;
+    return 0;
+  }
+  function mseFalla(e, st, x) {
+    if (st.parado) return; st.parado = true;
+    console.warn('monta: bucle sin Media Source', st.nombre, x); L('bucle nativo ' + st.nombre);
+    if (e._mse === st) { e._mse = null; e.src = URLS[st.nombre]; e.load(); e.loop = true; if (visible === e) { var p = e.play(); if (p && p.catch) p.catch(function () {}); } }
+  }
+  function alimentaMSE(e) {          // otra vuelta detrás cuando queda poco; lo ya visto, fuera (memoria)
+    var st = e._mse; if (!st || st.parado || !st.sb || !st.ab || !st.dur) return;
+    var t = e.currentTime, ahora = performance.now();
+    if (t !== st.tUlt || e.paused || visible !== e || !(e.playbackRate > .05) || e.readyState < 2) { st.tUlt = t; st.wUlt = ahora; }
+    else if (ahora - st.wUlt > 1500) return mseFalla(e, st, 'parado en ' + t.toFixed(2));   // vigía: si se atasca, bucle nativo
+    if (st.sb.updating) return;
+    var b = st.sb.buffered; if (!b.length) return;
+    var fin = b.end(b.length - 1), ini = b.start(0);
+    try {
+      if (fin - t < st.dur * .6) { st.sb.timestampOffset = st.k * st.dur; st.k++; st.n++; st.sb.appendBuffer(st.ab); }
+      else if (t - ini > st.dur * 1.5) st.sb.remove(ini, t - st.dur * .5);
+    } catch (x) { mseFalla(e, st, x); }
+  }
+
   function alPrimerFotograma(v, cb) {
     var hecho = false; function ok() { if (!hecho) { hecho = true; cb(); } }
     if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(ok); else v.addEventListener('playing', function f() { v.removeEventListener('playing', f); setTimeout(ok, 30); });
@@ -3126,7 +3205,7 @@ var DIR = (function () {
       BAJANDO++;
       (function (n, f) {
         fetch(BASE + f).then(function (r) { if (!r.ok) throw new Error(r.status); return r.blob(); })
-          .then(function (b) { URLS[n] = URL.createObjectURL(b); REC++; })
+          .then(function (b) { URLS[n] = URL.createObjectURL(b); if (n.indexOf('bucle:') === 0) BLOBS[n] = b; REC++; })
           .catch(function (e) { console.warn('monta: no se pudo cargar', f, e); REC++; URLS[n] = null; })
           .then(function () { BAJANDO--; baja(); });
       })(n, f);
@@ -3223,13 +3302,17 @@ var DIR = (function () {
     if (!v) return false;
     pon(v, n); v.loop = false; v.playbackRate = 1;
     clip = { id: id, el: v, fin: c.fin, t0: performance.now(), dur: c.dur };
-    ocultaBrillo(.12); vPatch.style.opacity = 0;   // (30-sep-2026, tarde) el surco se va en un fundido cortísimo, no de golpe
+    var hj = !S.blank && hoja(id);                 // (30-sep-2026, tarde, v2) surco dorado dibujado en cada fotograma del clip
+    if (hj) { clip.hoja = hj; brillo.clave = 'clip:' + id; brillo.filas = -1; }
+    else ocultaBrillo(.12);
+    vPatch.style.opacity = 0;   // (30-sep-2026, tarde) sin hoja, el surco se va en un fundido cortísimo, no de golpe
     if (!S.blank && MAN.brillo && /^op:/.test(c.fin || '')) { var pf = c.fin.split(':'); if (MAN.brillo[pf[1] + ':' + pf[3]]) preparaBrillo(pf[1] + ':' + pf[3]); }
     if (trav) { travFin(); }
     var ir = function () {
       try { v.currentTime = 0; } catch (x) {}
       var p = v.play(); if (p && p.catch) p.catch(function () {});
       alPrimerFotograma(v, function () { arriba(v, corte ? 0 : .35); if (window.__alClip) { try { window.__alClip(id); } catch (x) {} } });
+      if (clip && clip.hoja) { dibujaHoja(clip.hoja, 0); sigueHoja(v); }
       L('clip ' + id + (corte ? ' (corte)' : ' (fundido)'));
     };
     if (v._listo) ir(); else v.addEventListener('loadeddata', function f() { v.removeEventListener('loadeddata', f); ir(); });
@@ -3267,7 +3350,7 @@ var DIR = (function () {
   function precarga() {
     if (clip || performance.now() - tPrep < 250) return; tPrep = performance.now();
     var libres = libre('video');
-    siguientes().forEach(function (id, i) { var n = 'clip:' + id; if (!URLS[n]) { encola(n, true); return; } if (libres[i]) pon(libres[i], n); });
+    siguientes().forEach(function (id, i) { var n = 'clip:' + id; hoja(id); if (!URLS[n]) { encola(n, true); return; } if (libres[i]) pon(libres[i], n); });
   }
 
   /* ── recorrido (grabar / escuchar en «Bocina») ─────────────── */
@@ -3351,9 +3434,14 @@ var DIR = (function () {
     if (brillo.datos && filas !== brillo.filas) {
       brillo.filas = filas;
       var D = brillo.datos.D, A = brillo.datos.A, o = gCtx.createImageData(D.width, D.height), r0 = MAN.row0 || 15, r1 = r0 + filas;
+      var fijo = (MAN.v || 1) >= 2 ? (clave === 'BOC:A:trav' ? ORO_VIVO : ORO) : null;   // (v2) el mismo oro que en los clips
       for (var i = 0; i < D.data.length; i += 4) {
         var fila = A.data[i];
-        if (fila >= r0 && fila < r1) { o.data[i] = D.data[i]; o.data[i + 1] = D.data[i + 1]; o.data[i + 2] = D.data[i + 2]; o.data[i + 3] = 255; }
+        if (fila >= r0 && fila < r1) {
+          if (fijo) { o.data[i] = fijo[0]; o.data[i + 1] = fijo[1]; o.data[i + 2] = fijo[2]; }
+          else { o.data[i] = D.data[i]; o.data[i + 1] = D.data[i + 1]; o.data[i + 2] = D.data[i + 2]; }
+          o.data[i + 3] = 255;
+        }
       }
       gCtx.putImageData(o, 0, 0);
     }
@@ -3362,6 +3450,42 @@ var DIR = (function () {
     cGlow.style.transition = brillo.on ? 'none' : 'opacity ' + (fundido || .6) + 's';
     cGlow.style.opacity = op.toFixed(3); brillo.on = op > 0 ? 1 : 0;
   }
+
+  /* (30-sep-2026, tarde, v2) SURCO QUE SIGUE AL CILINDRO. En la segunda grabación, cada clip de después de grabar trae su hoja
+     (glow/clip_<ID>.png): para cada fotograma, el mapa de filas del cilindro recortado y a la mitad. Aquí, en cada fotograma de
+     vídeo (requestVideoFrameCallback: el mismo que se ve), se pintan de oro las filas ya grabadas. Mismo oro que en las
+     estaciones, así que al acabar el clip no se nota el relevo. */
+  var ORO = [135, 88, 32], ORO_VIVO = [191, 156, 85];     // (medidos en los brillos renderizados: reposo y recorrido)
+  var HOJAS = {}, hCv = null, hCtx = null;
+  function hoja(id) {
+    var b = MAN && MAN.brilloClip && MAN.brilloClip[id]; if (!b) return null;
+    var h = HOJAS[id]; if (h && h.img) return h.listo ? h : null;
+    var n = 'glow:' + b.img; if (!URLS[n]) { encola(n, true); return null; }
+    if (!h) { h = HOJAS[id] = { meta: b, img: new Image(), listo: false }; h.img.onload = function () { h.listo = true; }; h.img.src = URLS[n]; }
+    return h.listo ? h : null;
+  }
+  function sigueHoja(v) {
+    if (!v.requestVideoFrameCallback) return;
+    var f = function (ahora, md) { if (!clip || clip.el !== v || !clip.hoja) return; dibujaHoja(clip.hoja, md.mediaTime); v.requestVideoFrameCallback(f); };
+    v.requestVideoFrameCallback(f);
+  }
+  function dibujaHoja(h, t) {
+    var m = h.meta, k = Math.max(0, Math.min(m.n - 1, Math.round(t * (m.fps || 30)))), f = m.marcos[k];
+    if (!f || !f[2]) { cGlow.style.opacity = 0; brillo.on = 0; return; }
+    var w = f[2], hh = f[3], e = m.esc || 2;
+    if (!hCv) { hCv = document.createElement('canvas'); hCtx = hCv.getContext('2d', { willReadFrequently: true }); }
+    if (hCv.width !== w || hCv.height !== hh) { hCv.width = w; hCv.height = hh; }
+    hCtx.clearRect(0, 0, w, hh); hCtx.drawImage(h.img, f[0], f[1], w, hh, 0, 0, w, hh);
+    var A = hCtx.getImageData(0, 0, w, hh).data;
+    if (cGlow.width !== w || cGlow.height !== hh) { cGlow.width = w; cGlow.height = hh; }
+    var o = gCtx.createImageData(w, hh), r0 = MAN.row0 || 15, r1 = r0 + filasGrabadas(), i;
+    for (i = 0; i < A.length; i += 4) { var fl = A[i]; if (fl >= r0 && fl < r1) { o.data[i] = ORO[0]; o.data[i + 1] = ORO[1]; o.data[i + 2] = ORO[2]; o.data[i + 3] = 255; } }
+    gCtx.putImageData(o, 0, 0);
+    brillo.caja = [f[4], f[5], w * e, hh * e]; colocaCaja(cGlow, brillo.caja);
+    var op = Math.max(0, Math.min(1, SC3.brillo() / .5));
+    cGlow.style.transition = 'none'; cGlow.style.opacity = op.toFixed(3); brillo.on = op > 0 ? 1 : 0;
+  }
+  function filasGrabadas() { return Math.floor(Math.max(0, Math.min(1, S.recorded / Math.max(.001, S.cylLen))) * (MAN.acells || 28928) / (MAN.cols || 128)); }
 
   function preparaBrillo(clave) {       // (30-sep-2026, tarde) carga y guarda el surco de un plano, sin tocar lo que se ve
     if (CACHE_BRILLO[clave] || !MAN.brillo[clave]) return;
@@ -3429,10 +3553,12 @@ var DIR = (function () {
   /* ── cada fotograma ────────────────────────────────────────── */
   function cuadro(dt) {
     if (!MAN) return;
+    for (var ci = 0; ci < 2; ci++) if (capas[ci]._mse) alimentaMSE(capas[ci]);   // (30-sep, tarde) bucles sin tirón
     precarga();
     cuidaManivela();
     if (clip) {
       if (performance.now() - clip.t0 > (clip.dur + 2.5) * 1000) { L('clip ' + clip.id + ' sin «ended»: se cierra'); terminaClip(); }
+      else if (clip.hoja) { if (!clip.el.requestVideoFrameCallback) dibujaHoja(clip.hoja, clip.el.currentTime); }
       else brilloAntes();
       return;
     }
@@ -3507,7 +3633,8 @@ var DIR = (function () {
   return {
     inicia: inicia, cuadro: cuadro, clip: pideClip, paso: paso, manivela: manivela, manivelaPara: manivelaPara, marco: ponMarco, anclas: anclas, proyecta: proyecta,
     set vista(n) { vista = n; }, get vista() { return vista; },
-    ocupado: function () { return !!clip; }, actual: function () { return cur; } /* (30-sep-2026) para el titileo de las lámparas (UI2) */, esencial: esencial, estado: function () { return { cur: cur, clip: clip && clip.id, trav: !!trav, vista: vista, cargados: Object.keys(URLS).length, total: TOT, log: dbg.slice(-60) }; }
+    ocupado: function () { return !!clip; }, actual: function () { return cur; } /* (30-sep-2026) para el titileo de las lámparas (UI2) */, esencial: esencial, estado: function () { return { cur: cur, clip: clip && clip.id, trav: !!trav, vista: vista, cargados: Object.keys(URLS).length, total: TOT, log: dbg.slice(-60),
+      mse: capas.filter(function (e) { return e._mse; }).map(function (e) { return { uso: e._uso, vueltas: e._mse.n, dur: +e._mse.dur.toFixed(3), t: +e.currentTime.toFixed(2), visible: e === visible }; }) }; }
   };
 })();
 
