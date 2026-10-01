@@ -853,6 +853,57 @@ body.cover #windWarn{opacity:0!important;pointer-events:none!important}
 </style>
 </head>
 <body>
+<!-- (01-10-2026, Iago: «que cuando entre ya aparezca la portada… si necesita cargar prefiero una animación de carga: una
+     barra que carga y una manivela como dándole cuerda») PANTALLA DE CARGA: tapa la lámina de la mesa vacía hasta que la
+     portada está a la vista (vídeo: primera imagen puesta · ?3d: portada lista); como mucho 25 s. Quitarla: borrar este bloque. -->
+<style>
+#carga{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:clamp(14px,2.4vmin,30px);background:radial-gradient(ellipse 60% 55% at 50% 46%,rgba(122,80,32,.20),rgba(5,4,3,0) 70%),#050403;
+  transition:opacity .6s ease;-webkit-user-select:none;user-select:none}
+#carga.fuera{opacity:0;pointer-events:none}
+#carga .cgManivela{width:clamp(76px,14vmin,160px);height:auto;overflow:visible;filter:drop-shadow(0 8px 20px rgba(0,0,0,.65))}
+#carga .cgGira{transform-box:view-box;transform-origin:60px 60px;animation:cgGira 1.6s linear infinite}
+@keyframes cgGira{to{transform:rotate(360deg)}}
+#carga .cgBarra{width:clamp(180px,30vw,440px);height:3px;border-radius:3px;background:rgba(224,182,90,.16);overflow:hidden}
+#carga .cgBarra i{display:block;height:100%;width:100%;transform-origin:0 50%;transform:scaleX(.03);
+  background:linear-gradient(90deg,#A87C22,#D4A13F 45%,#F3D27E);animation:cgLlena 10s cubic-bezier(.1,.75,.25,1) forwards}
+#carga.listo .cgBarra i{animation:none;transform:scaleX(1);transition:transform .35s ease-out}
+@keyframes cgLlena{from{transform:scaleX(.03)}to{transform:scaleX(.92)}}
+#carga .cgTxt{margin:0;font:600 clamp(10px,1.35vmin,15px)/1 Georgia,'Times New Roman',serif;letter-spacing:.34em;text-indent:.34em;
+  text-transform:uppercase;color:rgba(214,200,174,.7)}
+</style>
+<div id="carga" role="status" aria-label="Cargando el fonógrafo">
+  <svg class="cgManivela" viewBox="0 0 120 120" aria-hidden="true">
+    <defs>
+      <radialGradient id="cgLaton" cx="38%" cy="34%" r="72%"><stop offset="0" stop-color="#FBE3A2"/><stop offset=".55" stop-color="#D4A13F"/><stop offset="1" stop-color="#6E4E14"/></radialGradient>
+      <linearGradient id="cgBrazo" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#8E6A1E"/><stop offset=".45" stop-color="#F3D27E"/><stop offset="1" stop-color="#9C7424"/></linearGradient>
+      <radialGradient id="cgPomo" cx="36%" cy="30%" r="78%"><stop offset="0" stop-color="#A7703E"/><stop offset=".6" stop-color="#5B3319"/><stop offset="1" stop-color="#26130A"/></radialGradient>
+    </defs>
+    <circle cx="60" cy="60" r="43" fill="none" stroke="rgba(224,182,90,.18)" stroke-width="1.4" stroke-dasharray="1.5 6" stroke-linecap="round"/>
+    <g class="cgGira">
+      <rect x="55.5" y="17" width="9" height="45" rx="4.5" fill="url(#cgBrazo)" stroke="#5E430F" stroke-width=".8"/>
+      <circle cx="60" cy="60" r="14" fill="url(#cgLaton)" stroke="#5E430F" stroke-width="1.2"/>
+      <circle cx="60" cy="60" r="4.2" fill="#3A2808"/>
+      <circle cx="60" cy="17" r="10.5" fill="url(#cgPomo)" stroke="#1E1006" stroke-width="1"/>
+      <ellipse cx="56.5" cy="13.5" rx="3.6" ry="2.4" fill="rgba(255,226,170,.28)"/>
+    </g>
+  </svg>
+  <div class="cgBarra"><i></i></div>
+  <p class="cgTxt">Dando cuerda…</p>
+</div>
+<script>
+(function(){
+  var c=document.getElementById('carga'), t0=Date.now(), vid=!/[?&]3d/.test(location.search);
+  function lista(){ var b=document.body, bo=document.getElementById('boot');
+    if(!b||!bo||!bo.classList.contains('ready')) return false;
+    return !vid || b.classList.contains('vidListo'); }
+  var tm=setInterval(function(){
+    if(!lista() && Date.now()-t0<25000) return;
+    clearInterval(tm); c.classList.add('listo');
+    setTimeout(function(){ c.classList.add('fuera'); setTimeout(function(){ if(c.parentNode) c.parentNode.removeChild(c); },700); },380);
+  },120);
+})();
+</script>
 
 <div id="plate" aria-hidden="true"><div id="plateA"></div><div id="plateB"></div><div id="plateDim"></div><div id="flame"></div><div id="lampGlow"></div></div>
 <div id="stage"></div>
@@ -3120,7 +3171,8 @@ var DIR = (function () {
       if (st.parado) return;
       try { st.sb = ms.addSourceBuffer(mime); st.sb.mode = 'segments'; } catch (x) { return mseFalla(e, st, x); }
       st.sb.addEventListener('updateend', function () {
-        if (!st.dur && st.sb.buffered.length) st.dur = st.sb.buffered.end(st.sb.buffered.length - 1);
+        if (st.parado) return;   // (01-10-2026) tras cambiar de vídeo el SourceBuffer ya no existe: leerlo lanzaba un error
+        try { if (!st.dur && st.sb.buffered.length) st.dur = st.sb.buffered.end(st.sb.buffered.length - 1); } catch (x) {}
       });
       st.sb.addEventListener('error', function (x) { mseFalla(e, st, x); });
       blob.arrayBuffer().then(function (ab) { if (st.parado) return; ab = limpiaMP4(ab);
@@ -3164,10 +3216,10 @@ var DIR = (function () {
     var t = e.currentTime, ahora = performance.now();
     if (t !== st.tUlt || e.paused || visible !== e || !(e.playbackRate > .05) || e.readyState < 2) { st.tUlt = t; st.wUlt = ahora; }
     else if (ahora - st.wUlt > 1500) return mseFalla(e, st, 'parado en ' + t.toFixed(2));   // vigía: si se atasca, bucle nativo
-    if (st.sb.updating) return;
-    var b = st.sb.buffered; if (!b.length) return;
-    var fin = b.end(b.length - 1), ini = b.start(0);
-    try {
+    try {          // (01-10-2026) también la lectura de «buffered» va dentro: si el Media Source se cerró, bucle nativo
+      if (st.sb.updating) return;
+      var b = st.sb.buffered; if (!b.length) return;
+      var fin = b.end(b.length - 1), ini = b.start(0);
       if (fin - t < st.dur * .6) { st.sb.timestampOffset = st.k * st.dur; st.k++; st.n++; st.sb.appendBuffer(st.ab); }
       else if (t - ini > st.dur * 1.5) st.sb.remove(ini, t - st.dur * .5);
     } catch (x) { mseFalla(e, st, x); }
