@@ -3537,7 +3537,7 @@ var DIR = (function () {
     if (S.phase === 'boot') r = ['MONTA'];
     else if (S.phase === 'tour') { var k = S.tourStep + 1; r = k < 5 ? ['PASO' + k + (k + 1)] : ['MONTADO']; if (k > 1) r.push('ANT' + k + (k - 1)); }
     else if (S.phase === 'guide' && G.flow === 'rec') r = [['R_CUERDA', 'R_FRENO', ID('R_AGUJA'), 'R_PIANO', 'R_PIANO'][G.i]];
-    else if (S.phase === 'guide' && G.flow === 'play') r = [['P_LEVANTAR', 'P_ZAFIRO', 'P_MARCHA', ID('P_APOYAR'), 'P_FIN'][G.i]];
+    else if (S.phase === 'guide' && G.flow === 'play') r = [['P_LEVANTAR', 'P_ZAFIRO', ID('P_MARCHA'), ID('P_APOYAR'), 'P_FIN'][G.i]];
     return r.filter(Boolean);
   }
   var tPrep = 0;
@@ -3871,7 +3871,12 @@ var DIR = (function () {
   var PASOS = { rec: ['R_CUERDA', 'R_FRENO', 'R_AGUJA', null, null], play: ['P_LEVANTAR', 'P_ZAFIRO', 'P_MARCHA', 'P_APOYAR', null] };
   function paso(f, i) { var id = PASOS[f] && PASOS[f][i]; if (id) pideClip(ID(id)); }
   // (01-10-2026, Iago: «en esos momentos que no haya zooms») la aguja baja en el mismo plano del cilindro, sin mover la cámara
-  function ID(id) { return (id === 'R_AGUJA' || id === 'P_APOYAR') && MAN && MAN.clips[id + '_C'] ? id + '_C' : id; }
+  function ID(id) {
+    if (!MAN) return id;
+    // (01-10-2026, mediodía) «Escuchar»: del mecanismo al plano de la bocina y allí se apoya el zafiro (sin cambiar de plano)
+    if ((id === 'P_MARCHA' || id === 'P_APOYAR') && MAN.clips[id + '_B'] && MAN.clips['P_MARCHA_B'] && MAN.clips['P_APOYAR_B']) return id + '_B';
+    return (id === 'R_AGUJA' || id === 'P_APOYAR') && MAN.clips[id + '_C'] ? id + '_C' : id;
+  }
   function recursoDe(n) { if (n.indexOf('giro:') === 0) return !!giroDe(n.slice(5)); return !!recurso(n); }
   return {
     inicia: inicia, cuadro: cuadro, clip: pideClip, paso: paso, manivela: manivela, manivelaPara: manivelaPara, marco: ponMarco, anclas: anclas, proyecta: proyecta,
@@ -4156,6 +4161,7 @@ var UI2 = (function () {
     'Una mica finísima con una aguja en el centro: al grabar <em>talla</em> el surco; al reproducir, lo <em>lee</em>.',
     'La misma boca para las dos cosas: recoge el sonido al grabar y lo devuelve a la sala al reproducir.'
   ];
+  function MAN_B() { return true; }   // (los clips P_MARCHA_B y P_APOYAR_B; si faltaran, el director usa los de antes)
   function textos() {
     TOUR.forEach(function (t, i) { t.body = TXT_TOUR[i]; });
     var r = FLOWS.rec.steps, p = FLOWS.play.steps;
@@ -4175,6 +4181,7 @@ var UI2 = (function () {
     p[2].btn = 'Soltar el freno';
     p[2].run = function () { phono.crankSpin = Math.PI * 4; setBrake(false); S.carGoal = -.58; };   // (en el vídeo, la manivela da aún dos vueltas)
     p[3].body = 'El zafiro se posa al principio del surco. Vuelve el siseo, más suave que con el acero.';
+    if (MAN_B()) p[3].view = 'bocina';   // (01-10-2026, mediodía) se apoya y suena en el mismo plano, el de la bocina
     p[4].body = 'Esto es lo que la máquina pudo guardar: sin graves, sin brillo y con el color de la bocina.';
   }
 
