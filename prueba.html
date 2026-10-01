@@ -64,6 +64,17 @@
   surco dorado sigue al cilindro fotograma a fotograma también en los vídeos y no desaparece una vez grabado (hojas
   monta/glow/clip_*); los bucles encadenan sin tirón (Media Source; con ?nomse, el bucle de antes). Los vídeos de la
   tarde siguen en el historial de GitHub (commit 4a80c1b de fon-grafo) por si hubiera que volver a ellos.
+  (01-10-2026, mañana, Iago: «el fondo… desenfocado ya en el PASO 1… cuando los planos son más abiertos prefiero que no haya
+  desenfoque» · «toda secuencia pre-grabada tiene que poder ser infinita y que no cante» · «en el paso 4 de 5, de repente el
+  cilindro se para… que no haya zooms… que el cilindro se mueva de forma continua» · «que solo haya un botón [de cuerda]…
+  un letrerito emergente señalando a esa zona») FONDO NÍTIDO EN LOS PLANOS ABIERTOS (vista general y sala regrabadas; en los
+  primeros planos, el desenfoque de antes); GIRO EN TIEMPO REAL: las estaciones con el cilindro girando ya no son vídeos en
+  bucle sino una vuelta del cilindro en 23 posiciones (monta/giro/) que la página elige en cada fotograma según las rpm de
+  verdad: no hay costuras, frena hasta pararse en su sitio y los clips enlazan en el mismo ángulo (con ?nogiro, los bucles
+  de vídeo de antes); la aguja baja en el plano del cilindro sin mover la cámara (clips R_AGUJA_C y P_APOYAR_C) y el paso del
+  micrófono sigue en ese plano; lo que viene detrás de cada paso se descarga antes; el muelle, con el motor en marcha
+  esperando, dura minutos (antes se iba agotando mientras se esperaba); un único botón «Dar cuerda» (a la derecha) con un
+  letrero que lo señala. Los vídeos de la noche anterior siguen en el historial de GitHub de fon-grafo.
 -->
 
 <!-- Sentry (17-sep-2026): errores JS en produccion. Sin datos personales: solo el id anonimo de la cuenta como etiqueta. -->
@@ -1731,7 +1742,7 @@ function plateUpdate(t){
   if(!PC){ PC={p:new THREE.Vector3().fromArray(SC3.PLATE_CAM.p), q:new THREE.Vector3().fromArray(SC3.PLATE_CAM.t)}; PC.dir=PC.q.clone().sub(PC.p).normalize(); }
   var cp=camera.position, dir=new THREE.Vector3(); camera.getWorldDirection(dir);
   var dev=Math.max(cp.distanceTo(PC.p)/1.4, Math.acos(Math.max(-1,Math.min(1,dir.dot(PC.dir))))/0.55);
-  var blur=sstep(.05,.7,dev), dark=.06+(.46-.26*FX.work)*sstep(.08,1.0,dev);   // @fb3 · con luz de trabajo el fondo se oscurece mucho menos
+  var blur=sstep(.05,.7,dev)*(1-sstep(1.8,2.2,orb.r)), dark=.06+(.46-.26*FX.work)*sstep(.08,1.0,dev);   // @fb3 · con luz de trabajo el fondo se oscurece mucho menos
   var dx=(cp.x-PC.p.x), dy=(cp.y-PC.p.y);
   var z=FX.zoom*FX.ezoom*(1+.06*blur), F=SC3.frame();
   if(PL.fw!==F.Wp||PL.fh!==F.Hp){ PL.fw=F.Wp; PL.fh=F.Hp; PL.wrap.style.width=F.Wp+'px'; PL.wrap.style.height=F.Hp+'px'; }
@@ -2817,7 +2828,7 @@ function tick(){
   }else{
     if(running()){
       if(S.springOn){
-        S.wind=Math.max(0,S.wind-dt*(S.mode==='idle'?.005:.0072));
+        S.wind=Math.max(0,S.wind-dt*(S.mode==='idle'?(VID?.0012:.005):.0072));   // (01-10-2026) esperando: dura minutos
         if(S.wind<=0&&S.mode!=='idle') stopAll();
       }
       var eff=S.springOn?Math.min(1,.30+S.wind*1.45):1;
@@ -3034,7 +3045,13 @@ function bindCover(){
    · Grabar y escuchar: recorrido del carro en «Bocina» (120 s), sincronizado con lo grabado / lo que suena.
    · Capas vivas encima: surco dorado (su extensión real y su brillo), camino del sonido, manivela.
    · Lo que no tiene clip (mandos a mano, vistas, etc.) cambia con un fundido corto al estado de llegada.
-   ?3d → el 3D en vivo de antes, sin tocar. */
+   ?3d → el 3D en vivo de antes, sin tocar.
+   (01-10-2026) GIRO EN TIEMPO REAL. Iago: «toda secuencia pre-grabada tiene que poder ser infinita y que no cante» · «que el
+   cilindro se mueva de forma continua en base a lo que sucede». Las estaciones «girando» ya no son vídeos en bucle: son una
+   imagen de fondo y una hoja con una vuelta del cilindro (23 posiciones, cada 16°, solo el recorte que se mueve). En cada
+   fotograma se pinta la posición del ángulo que lleva el cilindro según las rpm de verdad: sin costuras, sin velocidad mínima
+   (frena hasta pararse en su sitio y solo entonces funde a la foto fija) y los clips empiezan y acaban en el mismo ángulo
+   que se está viendo (si hace falta, el clip espera una fracción de vuelta). ?nogiro → los bucles de vídeo de antes. */
 var VID = !/[?&]3d/.test(location.search);
 if (VID) FLOWS.rec.steps[4].view = 'bocina';     // (vídeo) «Graba en la cera» en el plano de la bocina: allí se ven bocina, carro y surco
 
@@ -3062,7 +3079,7 @@ function createVideoScene(THREE, RoundedBoxGeometry, opts) {
 
 var DIR = (function () {
   'use strict';
-  var BASE = 'monta/', VW = 1920, VH = 1080;
+  var BASE = 'monta/', VW = 1920, VH = 1080, NOGIRO = /[?&]nogiro/.test(location.search);
   var MAN = null, H264 = false, URLS = {}, BLOBS = {}, COLA_DESC = [], BAJANDO = 0, TOT = 0, REC = 0;
   var raiz, capas = [], cGlow, gCtx, vPatch, Z = 10;
   var cur = null, visible = null, clip = null, vista = 'sala', trav = null, cola = null, pasa = false;
@@ -3082,9 +3099,15 @@ var DIR = (function () {
       v.className = 'vc'; v._tipo = 'video'; caja.appendChild(v); capas.push(v);
     }
     for (var j = 0; j < 2; j++) { var im = document.createElement('img'); im.className = 'vc'; im.alt = ''; im._tipo = 'img'; caja.appendChild(im); capas.push(im); }
+    for (var g = 0; g < 2; g++) {   // (01-10-2026) giro en tiempo real: fotograma entero (fondo) + el recorte del cilindro encima
+      var cv = document.createElement('canvas'); cv.className = 'vc'; cv.width = VW; cv.height = VH; cv._tipo = 'giro';
+      caja.appendChild(cv); capas.push(cv);
+    }
     cGlow = document.createElement('canvas'); cGlow.id = 'vGlow'; raiz.appendChild(cGlow); gCtx = cGlow.getContext('2d');
     vPatch = document.createElement('video'); vPatch.id = 'vPatch'; vPatch.muted = true; vPatch.playsInline = true; vPatch.setAttribute('playsinline', ''); vPatch.preload = 'auto';
     raiz.appendChild(vPatch);
+    cMani = document.createElement('canvas'); cMani.id = 'vMani';   // (01-10-2026) la manivela, por ángulo
+    cMani.style.cssText = 'position:absolute;opacity:0;z-index:3;pointer-events:none'; raiz.appendChild(cMani);
     var st = $('stage'); st.parentNode.insertBefore(raiz, st);
     window.addEventListener('resize', coloca); coloca();
   }
@@ -3105,6 +3128,7 @@ var DIR = (function () {
     capas.forEach(function (e) { e.style.objectPosition = (c.px * 100) + '% 50%'; });
     if (brillo.caja) colocaCaja(cGlow, brillo.caja, c);
     if (vPatch._caja) colocaCaja(vPatch, vPatch._caja, c);
+    if (cMani && cMani._caja) colocaCaja(cMani, cMani._caja, c);
   }
   function colocaCaja(el, b, c) {
     c = c || cubre();
@@ -3145,6 +3169,7 @@ var DIR = (function () {
   }
   function pon(e, nombre) {          // carga un recurso (ya descargado) en una capa
     if (e._uso === nombre) return true;
+    if (e._tipo === 'giro') return ponGiro(e, nombre);
     var u = URLS[nombre]; if (!u) return false;
     if (e._mse) { e._mse.parado = true; e._mse = null; }
     e._uso = nombre; e._listo = false;
@@ -3225,6 +3250,67 @@ var DIR = (function () {
     } catch (x) { mseFalla(e, st, x); }
   }
 
+  /* ── (01-10-2026) giro en tiempo real ──────────────────────── */
+  var OMEGA = 160 / 60 * 2 * Math.PI, DOSPI = 2 * Math.PI;
+  var ang = 0;                       // ángulo del cilindro que se está viendo (rad, 0…2π): lo mueven las rpm de verdad
+  var GBMP = {}, GUSO = [];          // hojas ya decodificadas (las 3 últimas usadas)
+  function mod(a) { a = a % DOSPI; return a < 0 ? a + DOSPI : a; }
+  function giroDe(k) { return !NOGIRO && MAN && MAN.giros && esBucle(k) && MAN.giros[k] ? MAN.giros[k] : null; }
+  function hay(n) {                  // ¿está descargado lo necesario para el nombre lógico n?
+    if (n.indexOf('giro:') === 0) { var k = n.slice(5); return !!(URLS['gbase:' + k] && URLS['ghoja:' + k]); }
+    return !!URLS[n];
+  }
+  function pide(n, delante) {
+    if (n.indexOf('giro:') === 0) { var k = n.slice(5); encola('gbase:' + k, delante); encola('ghoja:' + k, delante); return; }
+    encola(n, delante);
+  }
+  function decodifica(n) {           // Blob → ImageBitmap (o <img> si no hay createImageBitmap)
+    var b = BLOBS[n];
+    if (b && window.createImageBitmap) return createImageBitmap(b);
+    return new Promise(function (ok, mal) { var im = new Image(); im.onload = function () { ok(im); }; im.onerror = mal; im.src = URLS[n]; });
+  }
+  function giroBmp(k) {
+    var g = GBMP[k];
+    if (!g) {
+      g = GBMP[k] = { p: Promise.all([decodifica('gbase:' + k), decodifica('ghoja:' + k)]).then(function (r) { g.base = r[0]; g.hoja = r[1]; return g; }) };
+      g.p.catch(function (x) { console.warn('monta: giro sin decodificar', k, x); delete GBMP[k]; if (MAN.giros) MAN.giros[k] = null; });
+    }
+    var i = GUSO.indexOf(k); if (i >= 0) GUSO.splice(i, 1); GUSO.push(k);
+    while (GUSO.length > 3) {        // memoria: fuera la que lleve más tiempo sin usarse (si no está en pantalla)
+      var viejo = GUSO.shift(), enUso = capas.some(function (e) { return e._tipo === 'giro' && e._uso === 'giro:' + viejo; });
+      if (enUso) { GUSO.push(viejo); break; }
+      var gv = GBMP[viejo]; delete GBMP[viejo];
+      if (gv) { try { if (gv.base && gv.base.close) gv.base.close(); if (gv.hoja && gv.hoja.close) gv.hoja.close(); } catch (x) {} }
+    }
+    return g.p;
+  }
+  function ponGiro(e, nombre) {
+    if (e._uso === nombre) return true;
+    var k = nombre.slice(5), m = giroDe(k); if (!m) return false;
+    e._uso = nombre; e._listo = false; e._j = -1; e._m = m; e._g = null;
+    giroBmp(k).then(function (g) {
+      if (e._uso !== nombre) return;
+      e._g = g; var cx = e.getContext('2d'); cx.drawImage(g.base, 0, 0, VW, VH); e._j = -1; pintaGiro(e); e._listo = true;
+      if (e._cb) { var cb = e._cb; e._cb = null; cb(); }
+    }, function () { if (e._uso === nombre) { e._uso = null; if (cur === k) cur = '?' + k; } });   // sin hoja: el vídeo en bucle de antes
+    return true;
+  }
+  function pintaGiro(e) {            // la posición de la hoja más cercana al ángulo de ahora (solo si cambia)
+    var g = e._g, m = e._m; if (!g || !m) return;
+    var paso = (m.paso || 16) * Math.PI / 180, j = Math.round(ang / paso);
+    if (j > m.n - 1) j = (ang > Math.PI) ? m.n - 1 : 0;
+    if (j === e._j) return;
+    e._j = j;
+    var c = m.caja, cols = m.cols;
+    e.getContext('2d').drawImage(g.hoja, (j % cols) * c[2], Math.floor(j / cols) * c[3], c[2], c[3], c[0], c[1], c[2], c[3]);
+  }
+  function anguloVisible() {         // {a: ángulo que se ve, w: rad/s} o null (parado, foto fija, clip…)
+    if (trav && visible === trav.el) { var t = trav.el; return { a: mod(OMEGA * t.currentTime), w: t.paused ? 0 : OMEGA * t.playbackRate }; }
+    if (visible && visible._tipo === 'giro') return { a: ang, w: S.rpm / 60 * DOSPI };
+    if (visible && visible._tipo === 'video' && esBucle(cur)) return { a: mod(OMEGA * visible.currentTime), w: visible.paused ? 0 : OMEGA * visible.playbackRate };
+    return null;
+  }
+
   function alPrimerFotograma(v, cb) {
     var hecho = false; function ok() { if (!hecho) { hecho = true; cb(); } }
     if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(ok); else v.addEventListener('playing', function f() { v.removeEventListener('playing', f); setTimeout(ok, 30); });
@@ -3242,6 +3328,9 @@ var DIR = (function () {
     if (nombre === 'trav') return MAN.trav ? fichero(MAN.trav) : null;
     if (nombre.indexOf('mani:') === 0) { var m = MAN.manivela[nombre.slice(5)]; return m ? fichero(m) : null; }
     if (nombre.indexOf('glow:') === 0) return nombre.slice(5);
+    if (nombre.indexOf('gbase:') === 0) { var gb = MAN.giros && MAN.giros[nombre.slice(6)]; return gb ? gb.base : null; }
+    if (nombre.indexOf('ghoja:') === 0) { var gh = MAN.giros && MAN.giros[nombre.slice(6)]; return gh ? gh.hoja : null; }
+    if (nombre.indexOf('mhoja:') === 0) { var mh = MAN.manivelaGiro && MAN.manivelaGiro[nombre.slice(6)]; return mh ? mh.hoja : null; }
     return null;
   }
   function encola(nombre, delante) {
@@ -3257,7 +3346,7 @@ var DIR = (function () {
       BAJANDO++;
       (function (n, f) {
         fetch(BASE + f).then(function (r) { if (!r.ok) throw new Error(r.status); return r.blob(); })
-          .then(function (b) { URLS[n] = URL.createObjectURL(b); if (n.indexOf('bucle:') === 0) BLOBS[n] = b; REC++; })
+          .then(function (b) { URLS[n] = URL.createObjectURL(b); if (/^(bucle|gbase|ghoja|mhoja):/.test(n)) BLOBS[n] = b; REC++; })
           .catch(function (e) { console.warn('monta: no se pudo cargar', f, e); REC++; URLS[n] = null; })
           .then(function () { BAJANDO--; baja(); });
       })(n, f);
@@ -3271,7 +3360,15 @@ var DIR = (function () {
     H264 = !!(v.canPlayType && v.canPlayType('video/mp4; codecs="avc1.640028"'));
     return fetch(BASE + 'manifest.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (m) {
       MAN = m; VW = m.w || 1920; VH = m.h || 1080;
-      var lista = m.orden || [];
+      var lista = [];
+      (m.orden || []).forEach(function (n) {   // (01-10-2026) con giro en tiempo real, los vídeos en bucle no hacen falta
+        if (n.indexOf('bucle:') === 0 && giroDe(n.slice(6))) { var k = n.slice(6); ['gbase:' + k, 'ghoja:' + k].forEach(function (x) { if (lista.indexOf(x) < 0) lista.push(x); }); }
+        else if (lista.indexOf(n) < 0) lista.push(n);
+      });
+      if (!NOGIRO && m.manivelaGiro) {         // (01-10-2026) la manivela por ángulo: su hoja pronto (paso 1 de «Grabar»); el vídeo, no
+        lista = lista.filter(function (n) { return !(n.indexOf('mani:') === 0 && m.manivelaGiro[n.slice(5)]); });
+        var iM = lista.indexOf('fija:op:MEC:Q:R:x'); Object.keys(m.manivelaGiro).forEach(function (e) { var x = 'mhoja:' + e; if (e === 'MEC' && iM >= 0) lista.splice(iM + 1, 0, x); else lista.push(x); });
+      }
       TOT = lista.length; lista.forEach(function (n) { encola(n); });
       if (m.fx && m.fx.BOC) {
         FXT = m.fx.BOC; SC3.cam.position.fromArray(FXT.pos);
@@ -3298,15 +3395,29 @@ var DIR = (function () {
     if (travActivo()) return 'trav';
     if (e === 'MCY' || e === 'MHE' || e === 'MHO') e = 'GEN';
     var tip = (e === 'CIL') ? (S.head === 'play' ? 'p' : 'r') : 'x';
-    return 'op:' + e + ':' + (giro() ? 'G' : 'Q') + ':' + (S.armDown ? 'A' : 'R') + ':' + tip;
+    var base = 'op:' + e + ':G:' + (S.armDown ? 'A' : 'R') + ':' + tip;
+    // (01-10-2026) con giro en tiempo real se sigue «girando» mientras quede algo de giro: frena en su sitio y, ya parado,
+    // funde a la foto fija. (Con vídeo, como antes: por debajo de 10 rpm, foto fija.)
+    // si lo que se ve ya está parado (p. ej. un clip que acaba frenado) y el motor no tira, se queda parado aunque al muelle
+    // le quede una pizca de giro: así no vuelve a «girar» un instante después de pararse
+    var gira = giroDe(base) ? (S.rpm > 0 && (running() || (cur || '').indexOf(':G:') > 0)) : giro();
+    return gira ? base : base.replace(':G:', ':Q:');
   }
   function esBucle(k) { return k && k.indexOf('op:') === 0 && k.split(':')[2] === 'G'; }
-  function nombreDe(k) { return esBucle(k) ? 'bucle:' + k : claveFija(k); }
+  function nombreDe(k) { return esBucle(k) ? (giroDe(k) ? 'giro:' + k : 'bucle:' + k) : claveFija(k); }
 
   /* ── mostrar estados ───────────────────────────────────────── */
   function muestra(k, fundido) {
     var n = nombreDe(k);
-    if (!URLS[n]) { encola(n, true); return false; }
+    if (!hay(n)) { pide(n, true); return false; }
+    if (n.indexOf('giro:') === 0) {
+      var cg = (visible && visible._uso === n) ? visible : libre('giro')[0];
+      if (!cg || !pon(cg, n)) return false;
+      cur = k;
+      var va0 = function () { if (cur === k && !clip && visible !== cg) { pintaGiro(cg); arriba(cg, fundido); } };
+      if (cg._listo) va0(); else cg._cb = va0;
+      return true;
+    }
     if (esBucle(k)) {
       var v = (visible && visible._uso === n) ? visible : libre('video')[0];
       if (!v) return false;
@@ -3340,14 +3451,43 @@ var DIR = (function () {
     if (/^T\d/.test(a[0]) && a[0] === b[0]) return 'fundido';                               // mismo paso del montaje, otro plano
     return null;
   }
+  var espera = null;   // (01-10-2026) clip que espera a que el cilindro llegue a su ángulo de salida o a tener su estado de llegada
   function pideClip(id, forzarCorte) {
-    if (!MAN || clip) return false;
+    if (!MAN || clip || espera) return false;
     var c = MAN.clips[id], n = 'clip:' + id;
     if (!c) return false;
     if (!URLS[n]) { encola(n, true); L('clip ' + id + ' aún sin descargar'); return false; }
     if (GIRO_INI[id] && !giro()) { L('clip ' + id + ' descartado (no gira)'); return false; }
     var modo = forzarCorte ? 'corte' : encaja(id, c.ini);
     if (!modo) { L('clip ' + id + ' no encaja con ' + cur + ': fundido al estado final'); return false; }
+    // lo que viene después del clip, ya descargado (si no, al acabar se quedaría congelado su último fotograma)
+    var nf = (c.fin && c.fin !== 'negro' && c.fin !== 'mesa') ? nombreDe(c.fin) : null, falta = !!(nf && !hay(nf));
+    if (falta) pide(nf, true);
+    // si el cilindro está girando a la vista, el clip sale cuando llega a su ángulo de salida (como mucho, media vuelta)
+    var f = (modo === 'corte' && c.g0 && c.a0 != null) ? anguloVisible() : null, t = (f && f.w > 1) ? mod(c.a0 - f.a) / f.w : 0;
+    if (falta || t > .03) {
+      var ah = performance.now();
+      espera = { id: id, forzar: forzarCorte, a0: t > .03 ? c.a0 : null, nf: falta ? nf : null, hasta: ah + Math.min(.7, t + .12) * 1000, max: ah + 4000 };
+      L('clip ' + id + ' espera' + (t > .03 ? ' ' + Math.round(t * 1000) + ' ms (ángulo)' : '') + (falta ? ' (estado de llegada)' : ''));
+      return true;
+    }
+    return arrancaClip(id, modo);
+  }
+  function sigueEspera(dt) {          // en cada fotograma: ¿ya puede salir el clip que espera?
+    var e = espera, ahora = performance.now();
+    if (e.nf && !hay(e.nf) && ahora < e.max) return false;
+    if (e.a0 != null && ahora < e.hasta) {
+      var f = anguloVisible(), paso = f ? f.w * Math.max(1 / 60, Math.min(.05, dt || 1 / 60)) : 0;
+      if (f && f.w > 1) { var d = mod(e.a0 - f.a); if (d > paso * 1.1 && d < DOSPI - paso * .6) return false; }
+    }
+    espera = null;
+    var modo = e.forzar ? 'corte' : encaja(e.id, MAN.clips[e.id].ini);
+    if (!modo) { L('clip ' + e.id + ' ya no encaja con ' + cur); return true; }
+    arrancaClip(e.id, modo);
+    return true;
+  }
+  function arrancaClip(id, modo) {
+    var c = MAN.clips[id], n = 'clip:' + id;
     var corte = modo === 'corte';
     var v = capas.filter(function (e) { return e._tipo === 'video' && e._uso === n && e !== visible; })[0] || libre('video')[0];
     if (!v) { v = capas.filter(function (e) { return e._tipo === 'video' && e !== visible; })[0]; }
@@ -3375,10 +3515,11 @@ var DIR = (function () {
   function terminaClip() {
     if (!clip) return;
     var c = clip; clip = null; cur = c.fin; c.el.onended = null;
+    var mc = MAN.clips[c.id]; if (mc && mc.a1 != null) ang = mod(mc.a1);   // (01-10-2026) el giro sigue donde lo deja el clip
     L('fin ' + c.id + ' → ' + c.fin);
     var k = logico();
     if (k === 'trav' || k == null) k = c.fin;
-    if (k === c.fin && (URLS[nombreDe(k)])) muestra(k, 0);
+    if (k === c.fin && hay(nombreDe(k))) muestra(k, 0);
     else if (!muestra(k, .35)) { cur = '?' + c.fin; }     // aún sin descargar: se queda el último fotograma y se reintenta
     if (cola) { var q = cola; cola = null; setTimeout(function () {       // el clic guardado, solo si su botón sigue a la vista y activo
       if (q.offsetParent === null || q.disabled) return;
@@ -3386,23 +3527,29 @@ var DIR = (function () {
   }
   function prepara(k) {            // el estado de llegada, listo para el corte
     if (!k || k === 'negro' || k === 'mesa') return;
-    var n = nombreDe(k); if (!URLS[n]) { encola(n, true); return; }
-    if (esBucle(k)) { var v = libre('video')[0]; if (v) { pon(v, n); v.loop = true; } }
+    var n = nombreDe(k); if (!hay(n)) { pide(n, true); return; }
+    if (n.indexOf('giro:') === 0) { var cg = capas.filter(function (e) { return e._tipo === 'giro' && e._uso === n; })[0] || libre('giro')[0]; if (cg) pon(cg, n); }
+    else if (esBucle(k)) { var v = libre('video')[0]; if (v) { pon(v, n); v.loop = true; } }
     else { var im = libre('img')[0]; if (im) pon(im, n); }
   }
   function siguientes() {           // clips que pueden venir: se dejan cargados en las capas libres
     var r = [];
     if (S.phase === 'boot') r = ['MONTA'];
     else if (S.phase === 'tour') { var k = S.tourStep + 1; r = k < 5 ? ['PASO' + k + (k + 1)] : ['MONTADO']; if (k > 1) r.push('ANT' + k + (k - 1)); }
-    else if (S.phase === 'guide' && G.flow === 'rec') r = [['R_CUERDA', 'R_FRENO', 'R_AGUJA', 'R_PIANO', 'R_PIANO'][G.i]];
-    else if (S.phase === 'guide' && G.flow === 'play') r = [['P_LEVANTAR', 'P_ZAFIRO', 'P_MARCHA', 'P_APOYAR', 'P_FIN'][G.i]];
+    else if (S.phase === 'guide' && G.flow === 'rec') r = [['R_CUERDA', 'R_FRENO', ID('R_AGUJA'), 'R_PIANO', 'R_PIANO'][G.i]];
+    else if (S.phase === 'guide' && G.flow === 'play') r = [['P_LEVANTAR', 'P_ZAFIRO', 'P_MARCHA', ID('P_APOYAR'), 'P_FIN'][G.i]];
     return r.filter(Boolean);
   }
   var tPrep = 0;
   function precarga() {
-    if (clip || performance.now() - tPrep < 250) return; tPrep = performance.now();
+    if (clip || espera || performance.now() - tPrep < 250) return; tPrep = performance.now();
     var libres = libre('video');
-    siguientes().forEach(function (id, i) { var n = 'clip:' + id; hoja(id); if (!URLS[n]) { encola(n, true); return; } if (libres[i]) pon(libres[i], n); });
+    siguientes().forEach(function (id, i) { var n = 'clip:' + id; hoja(id); if (!URLS[n]) { encola(n, true); return; } if (libres[i]) pon(libres[i], n);
+      var c = MAN.clips[id], nf = c && c.fin && c.fin !== 'negro' && c.fin !== 'mesa' ? nombreDe(c.fin) : null;   // (01-10-2026) y lo que viene detrás
+      if (nf && !hay(nf)) pide(nf, true); });
+    // (01-10-2026) la otra cara de la estación que se ve (girando ↔ parada): por si arranca o se para el motor
+    if (cur && cur.indexOf('op:') === 0) { var o = cur.indexOf(':G:') > 0 ? cur.replace(':G:', ':Q:') : cur.replace(':Q:', ':G:'), no = nombreDe(o);
+      if (recursoDe(no) && !hay(no)) pide(no, false); }
   }
 
   /* ── recorrido (grabar / escuchar en «Bocina») ─────────────── */
@@ -3412,9 +3559,11 @@ var DIR = (function () {
     var v = libre('video')[0] || capas.filter(function (e) { return e._tipo === 'video' && e !== visible; })[0];
     if (!v) return false;
     var corte = /^op:BOC:G:A:/.test(cur || '');
-    pon(v, n); v.loop = false; trav = { el: v, gracia: 0 };
+    // (01-10-2026) el recorrido arranca en el ángulo que se está viendo: adelantado como mucho media vuelta (0,37 s de 120)
+    var fa = anguloVisible(), delta = fa ? mod(fa.a - OMEGA * travT()) / OMEGA : 0;
+    pon(v, n); v.loop = false; trav = { el: v, gracia: 0, delta: delta };
     var ir = function () {
-      try { v.currentTime = travT(); } catch (x) {}
+      try { v.currentTime = travT() + trav.delta; } catch (x) {}
       v.playbackRate = travRate() || 1;
       var p = v.play(); if (p && p.catch) p.catch(function () {});
       alPrimerFotograma(v, function () { arriba(v, corte ? 0 : .35); });
@@ -3431,7 +3580,7 @@ var DIR = (function () {
     if (S.mode === 'playing') return nom * (S.dry ? 1 : Math.max(.1, S.rpm / 160));
     return nom * Math.max(0, S.rpm / 160);
   }
-  function travFin() { if (!trav) return; var v = trav.el; trav = null; try { v.pause(); } catch (x) {} }
+  function travFin() { if (!trav) return; var v = trav.el; trav = null; try { v.pause(); } catch (x) {} if (v.currentTime > 0) ang = mod(OMEGA * v.currentTime); }
   function travCuida(dt) {
     var v = trav.el;
     if (travActivo()) {
@@ -3439,8 +3588,8 @@ var DIR = (function () {
       var r = travRate();
       if (r < .0625) { if (!v.paused) v.pause(); }
       else { if (v.paused && v._listo) { var p = v.play(); if (p && p.catch) p.catch(function () {}); } v.playbackRate = Math.min(4, r); }
-      var d = travT() - v.currentTime;
-      if ((S.mode === 'recording' || S.mode === 'playing') && Math.abs(d) > .3) { try { v.currentTime = travT(); } catch (x) {} }
+      var d = travT() + (trav.delta || 0) - v.currentTime;
+      if ((S.mode === 'recording' || S.mode === 'playing') && Math.abs(d) > .3) { try { v.currentTime = travT() + (trav.delta || 0); } catch (x) {} }
       return;
     }
     // se acabó (Detener, fin de la canción, Parar…): unos instantes para que llegue su clip (R_PIANO / P_FIN)
@@ -3554,8 +3703,35 @@ var DIR = (function () {
   }
 
   /* ── manivela (Mandos a mano, aviso de cuerda) ─────────────── */
+  /* (01-10-2026) LA MANIVELA EN TIEMPO REAL: una vuelta en 36 posiciones (monta/giro/mani_*.webp); se dibuja la del ángulo de
+     la manivela de verdad (CRANK): sin el arranque y la frenada del vídeo de dos vueltas repitiéndose mientras se mantiene
+     pulsado, y se para donde se para (al soltar, la vuelta se completa hasta abajo, como la de la foto). */
+  var cMani = null, mani = { est: null, j: -1, bmp: {}, on: false };
+  function maniDe(est) { return !NOGIRO && MAN && MAN.manivelaGiro && est ? MAN.manivelaGiro[est] || null : null; }
+  function estDe(k) { var p = (k || '').split(':'); return p[0] === 'op' ? p[1] : null; }
+  function maniBmp(est) {
+    var b = mani.bmp[est]; if (b) return b;
+    var n = 'mhoja:' + est; if (!maniDe(est)) return null;
+    if (!URLS[n]) { encola(n, true); return null; }
+    mani.bmp[est] = b = { listo: false };
+    decodifica(n).then(function (x) { b.img = x; b.listo = true; }, function () { delete mani.bmp[est]; if (MAN.manivelaGiro) MAN.manivelaGiro[est] = null; });
+    return b;
+  }
+  function cuidaManiGiro() {
+    if (!cMani) return;
+    var est = estDe(cur), m = maniDe(est), a = mod(CRANK);
+    var quieta = !(phono.crankSpin > 0) && (a < .015 || a > DOSPI - .015);
+    var ver = !!(m && !clip && !espera && !quieta && visible && visible._tipo !== 'video');
+    var b = ver ? maniBmp(est) : null;
+    if (!ver || !b || !b.listo) { if (mani.on) { cMani.style.opacity = 0; mani.on = false; } return; }
+    if (mani.est !== est) { mani.est = est; mani.j = -1; cMani.width = m.caja[2]; cMani.height = m.caja[3]; cMani._caja = m.caja; colocaCaja(cMani, m.caja); }
+    var j = Math.round(a / (DOSPI / m.n)) % m.n;
+    if (j !== mani.j) { mani.j = j; var cx = cMani.getContext('2d'); cx.drawImage(b.img, (j % m.cols) * m.caja[2], Math.floor(j / m.cols) * m.caja[3], m.caja[2], m.caja[3], 0, 0, m.caja[2], m.caja[3]); }
+    if (!mani.on) { cMani.style.opacity = 1; mani.on = true; }
+  }
   function manivela(seguida) {
     if (!MAN || clip || !cur) return;
+    if (maniDe(estDe(cur))) { maniBmp(estDe(cur)); return; }     // (01-10-2026) por ángulo: la pinta cuidaManiGiro()
     var p = cur.split(':'), m = p[0] === 'op' && MAN.manivela && MAN.manivela[p[1]];
     if (!m) return;
     var n = 'mani:' + p[1]; if (!URLS[n]) { encola(n, true); return; }
@@ -3570,6 +3746,10 @@ var DIR = (function () {
     L('manivela ' + p[1]);
   }
   function manivelaPara() {          // (30-sep-2026, tarde) al soltar: la manivela acaba la vuelta que lleva, hasta abajo
+    if (maniDe(estDe(cur)) || !vPatch._uso) {   // (01-10-2026) por ángulo: lo que le falta hasta abajo, en «segundos del vídeo»
+      var falta = mod(DOSPI - mod(CRANK)); if (falta > DOSPI - .015) falta = 0;
+      return Math.max(falta, 1e-4) / DOSPI * 1.375;
+    }
     vPatch.loop = false;               // (el vídeo trae dos vueltas: abajo al principio, a la mitad y al final)
     if (vPatch.paused || !(+vPatch.style.opacity > 0)) return 0;
     var d = vPatch.duration || 2.75, t = vPatch.currentTime, fin = t < d / 2 - .04 ? d / 2 : d;
@@ -3606,8 +3786,16 @@ var DIR = (function () {
   function cuadro(dt) {
     if (!MAN) return;
     for (var ci = 0; ci < 2; ci++) if (capas[ci]._mse) alimentaMSE(capas[ci]);   // (30-sep, tarde) bucles sin tirón
+    // (01-10-2026) giro en tiempo real: el ángulo avanza con las rpm de verdad (con un clip en marcha, quieto: lo lleva el clip)
+    if (!clip) ang = mod(ang + S.rpm / 60 * DOSPI * Math.max(0, Math.min(.1, dt || 0)));
+    for (var gi = 0; gi < capas.length; gi++) { var ge = capas[gi]; if (ge._tipo === 'giro' && ge._g && (ge === visible || ge.style.opacity !== '0')) pintaGiro(ge); }
+    if (espera && !clip) {            // un clip esperando su ángulo de salida: lo demás, quieto (el cilindro sigue girando)
+      if (!sigueEspera(dt)) { if (trav) travCuida(dt); cuidaBrillo(); return; }
+    }
+    if (!clip && visible && visible._tipo === 'img' && !capas.some(function (e) { return e._tipo === 'giro' && e.style.opacity !== '0'; })) ang = 0;   // foto fija: ángulo 0
     precarga();
     cuidaManivela();
+    cuidaManiGiro();
     if (clip) {
       if (performance.now() - clip.t0 > (clip.dur + 2.5) * 1000) { L('clip ' + clip.id + ' sin «ended»: se cierra'); terminaClip(); }
       else if (clip.hoja) { if (!clip.el.requestVideoFrameCallback) dibujaHoja(clip.hoja, clip.el.currentTime); }
@@ -3620,7 +3808,7 @@ var DIR = (function () {
     if (k && k !== cur && k !== 'trav') {
       var a = (cur || '').split(':'), b = k.split(':');
       var soloGiro = a[0] === 'op' && b[0] === 'op' && a[1] === b[1] && a[3] === b[3] && a[4] === b[4];
-      muestra(k, soloGiro ? .25 : .4);
+      muestra(k, soloGiro ? (b[2] === 'Q' ? .5 : .25) : .4);   // (01-10-2026) ya parado, a la foto fija con un fundido tranquilo
     }
     if (visible && visible._tipo === 'video' && esBucle(cur)) { var r = velocidad(); if (Math.abs(visible.playbackRate - r) > .01) visible.playbackRate = r; }
     cuidaBrillo();
@@ -3632,12 +3820,12 @@ var DIR = (function () {
     if (pasa || !VID) return;
     var t = e.target && e.target.closest ? e.target.closest(BLOQ) : null; if (!t) return;
     var enTrav = trav && t.matches('#pad .btn[data-view]');
-    if (!clip && !enTrav) return;
+    if (!clip && !espera && !enTrav) return;
     e.stopImmediatePropagation(); e.preventDefault();
     if (!enTrav) cola = t;
   }
   function teclas(e) {
-    if (pasa || !clip) return;
+    if (pasa || (!clip && !espera)) return;
     if (e.target && e.target.tagName === 'INPUT') return;
     if (['Space', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].indexOf(e.code) >= 0 || e.key === 'Enter') {
       e.stopImmediatePropagation(); e.preventDefault();
@@ -3681,11 +3869,17 @@ var DIR = (function () {
   }
 
   var PASOS = { rec: ['R_CUERDA', 'R_FRENO', 'R_AGUJA', null, null], play: ['P_LEVANTAR', 'P_ZAFIRO', 'P_MARCHA', 'P_APOYAR', null] };
-  function paso(f, i) { var id = PASOS[f] && PASOS[f][i]; if (id) pideClip(id); }
+  function paso(f, i) { var id = PASOS[f] && PASOS[f][i]; if (id) pideClip(ID(id)); }
+  // (01-10-2026, Iago: «en esos momentos que no haya zooms») la aguja baja en el mismo plano del cilindro, sin mover la cámara
+  function ID(id) { return (id === 'R_AGUJA' || id === 'P_APOYAR') && MAN && MAN.clips[id + '_C'] ? id + '_C' : id; }
+  function recursoDe(n) { if (n.indexOf('giro:') === 0) return !!giroDe(n.slice(5)); return !!recurso(n); }
   return {
     inicia: inicia, cuadro: cuadro, clip: pideClip, paso: paso, manivela: manivela, manivelaPara: manivelaPara, marco: ponMarco, anclas: anclas, proyecta: proyecta,
-    set vista(n) { vista = n; }, get vista() { return vista; },
-    ocupado: function () { return !!clip; }, actual: function () { return cur; } /* (30-sep-2026) para el titileo de las lámparas (UI2) */, esencial: esencial, estado: function () { return { cur: cur, clip: clip && clip.id, trav: !!trav, vista: vista, cargados: Object.keys(URLS).length, total: TOT, log: dbg.slice(-60),
+    set vista(n) { vista = n; }, get vista() { return vista; }, get angulo() { return ang; },
+    ocupado: function () { return !!clip || !!espera; }, actual: function () { return cur; } /* (30-sep-2026) para el titileo de las lámparas (UI2) */, esencial: esencial, estado: function () { return { cur: cur, clip: clip && clip.id, trav: !!trav, vista: vista, cargados: Object.keys(URLS).length, total: TOT, log: dbg.slice(-60),
+      giro: capas.filter(function (e) { return e._tipo === 'giro' && e._uso; }).map(function (e) { return { uso: e._uso, pos: e._j, listo: !!e._listo, visible: e === visible, op: e.style.opacity }; }),
+      ang: +ang.toFixed(3), espera: espera && espera.id, gurl: Object.keys(URLS).filter(function (x) { return /^g(base|hoja):/.test(x); }).length,
+      ngiros: MAN && MAN.giros ? Object.keys(MAN.giros).filter(function (x) { return MAN.giros[x]; }).length : -1,
       mse: capas.filter(function (e) { return e._mse; }).map(function (e) { return { uso: e._uso, vueltas: e._mse.n, dur: +e._mse.dur.toFixed(3), t: +e.currentTime.toFixed(2), visible: e === visible }; }) }; }
   };
 })();
@@ -3711,12 +3905,19 @@ var DIR = (function () {
    · AMB: la música de la introducción (monta/ambiente.mp3), suave; se aparta sola cuando la máquina suena. Botón «Música».
    · SFX: sonidos de piezas que se colocan (madera, metal, cera, clic, latón), sintetizados aquí y sincronizados con cada
      clip del montaje, y los de los mandos (freno, aguja, cabezal).
+   (01-10-2026, Iago: «las referencias a dar cuerda que solo hagan referencia al panel de la derecha… que solo haya un botón al
+   que darle. Puede salir un letrerito emergente señalando a esa zona») fuera la ayuda con aspecto de botón de la tarjeta y el
+   botón «Dar cuerda» del aviso de cuerda baja: el único botón es el de la derecha, y un letrero dorado aparece a su lado
+   señalándolo (con el porcentaje) en los pasos de cuerda y cuando queda poca.
    Deshacer: …/index.html?ui1 → la interfaz de antes, sin nada de esto. Para quitarlo del todo: borrar este bloque, el
    <style id="ui2"> y las dos llamadas «UI2.» (inicia y cuadro), y monta/ambiente.mp3. */
 var AMB = (function () {
   'use strict';
   var NIVEL = 0.2;          // música: −14 dB sobre el fichero (en la intro iba a −8 dB sin voz y a −17 dB bajo la voz)
   var on = true, pedido = false, datos = null, buf = null, g = null, obj = -1, prox = 0, fuente = null;
+  // (01-10-2026, Iago: «puedes poner sonido de fondo, de ambiente, si en el despacho de Edison tiene sentido») el despacho en
+  // invierno: la estufa encendida y el viento fuera (monta/sfx/sala.wav, 32 s en bucle sin costura), muy por debajo de la música
+  var NIVEL_SALA = 0.25, pedS = false, datS = null, bufS = null, gS = null, fueS = null, objS = -1;
   try { if (localStorage.getItem('fonografo.musica') === '0') on = false; } catch (e) {}
   function carga() {
     if (pedido) return; pedido = true;
@@ -3730,6 +3931,32 @@ var AMB = (function () {
     try { var p = A.ctx.decodeAudioData(d, function (b) { buf = b; }, function () {}); if (p && p.catch) p.catch(function () {}); } catch (e) {}
   }
   function prepara() { if (g || !A.ctx) return; g = A.ctx.createGain(); g.gain.value = 0; g.connect(A.ctx.destination); }
+  function cargaSala() {
+    if (pedS) return; pedS = true;
+    fetch('monta/sfx/sala.wav').then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(function (ab) { datS = ab; decodSala(); }).catch(function () {});
+  }
+  function decodSala() {
+    if (bufS || !datS || !A.ctx) return;
+    var d = datS; datS = null;
+    try { var p = A.ctx.decodeAudioData(d, function (b) { bufS = b; }, function () {}); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+  }
+  function objetivoSala() {          // 0 = callado · 1 = a su nivel (con la máquina sonando, a la mitad)
+    if (!on || document.hidden) return 0;
+    var f = S.phase, c = $('cine');
+    if (f === 'intro' || f === 'intro-go' || f === 'intro-end') return 0;
+    if (c && c.classList.contains('open')) return 0;
+    if (S.mode === 'recording' || (f === 'guide' && G.flow === 'rec' && G.i >= 3)) return 0;   // que no se cuele en la cera
+    return (S.mode === 'playing' || S.rpm > 3) ? .5 : 1;
+  }
+  function vigilaSala(c, t) {
+    cargaSala(); decodSala();
+    if (!bufS) return;
+    if (!gS) { gS = c.createGain(); gS.gain.value = 0; gS.connect(c.destination); }
+    if (!fueS) { var s = c.createBufferSource(); s.buffer = bufS; s.loop = true; s.connect(gS); s.start(t + .05); fueS = s; }
+    var o = objetivoSala();
+    if (o !== objS) { gS.gain.cancelScheduledValues(t); gS.gain.setValueAtTime(gS.gain.value, t); gS.gain.setTargetAtTime(o * NIVEL_SALA, t, o > objS ? 2.2 : .25); objS = o; }
+  }
   function objetivo() {              // 0 = callada · 1 = a su nivel
     if (!on || document.hidden) return 0;
     var f = S.phase, c = $('cine');
@@ -3745,6 +3972,7 @@ var AMB = (function () {
     if (!A.ctx || !UI2.activa) return;                             // hasta el primer gesto no hay audio
     carga(); prepara(); decodifica();
     var c = A.ctx, t = c.currentTime, o = objetivo();
+    vigilaSala(c, t);
     if (o !== obj) {
       g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t);
       g.gain.setTargetAtTime(o * NIVEL, t, o > obj ? 1.3 : .12); obj = o;
@@ -3761,7 +3989,7 @@ var AMB = (function () {
     vigila(); return on;
   }
   function estado() { return { on: on, objetivo: obj, ganancia: g ? +g.gain.value.toFixed(4) : null, musica: !!buf, sonando: !!fuente,
-    t: A.ctx ? +A.ctx.currentTime.toFixed(2) : null, prox: +prox.toFixed(2) }; }   // (para las pruebas)
+    t: A.ctx ? +A.ctx.currentTime.toFixed(2) : null, prox: +prox.toFixed(2), sala: !!fueS, salaGan: gS ? +gS.gain.value.toFixed(4) : null }; }   // (para las pruebas)
   return { vigila: vigila, alterna: alterna, estado: estado, get on() { return on; } };
 })();
 
@@ -3770,6 +3998,34 @@ var SFX = (function () {
   /* Cada sonido se sintetiza una vez (unas décimas de segundo de audio) y se reutiliza. Nada de campanas: golpes cortos,
      con cuerpo, como piezas de madera, hierro, cera y latón que se asientan. */
   var B = {}, g = null, n = 0;
+  /* (01-10-2026) FOLEY DE VERDAD de la biblioteca de Splice de Iago (monta/sfx/): caja, mecanismo, clic del cabezal, cambio de
+     cabezal, freno y el trinquete de la manivela (golpes sueltos de una manivela de metal; uno por diente, como antes). Lo que
+     no tiene un sustituto claro (cera, latón, aguja, aire) sigue sintetizado. Con ?sintesis, todo sintetizado como antes. */
+  var SMP = {}, TRQ = [], pedS = false, rcOrig = null;
+  function cargaSmp() {
+    if (pedS || !A.ctx || /[?&]sintesis/.test(location.search)) return; pedS = true;
+    var dec = function (ab) { return new Promise(function (ok, mal) { try { var p = A.ctx.decodeAudioData(ab, ok, mal); if (p && p.then) p.then(ok, mal); } catch (e) { mal(e); } }); };
+    fetch('monta/sfx/sfx.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+      if (!m) return;
+      Object.keys(m).forEach(function (k) {
+        if (k === 'sala') return;
+        [].concat(m[k].f).forEach(function (f) {
+          fetch('monta/' + f).then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then(dec)
+            .then(function (b) { if (k === 'trinquete') TRQ.push(b); else SMP[k] = b; }, function () {});
+        });
+      });
+    }).catch(function () {});
+    if (!rcOrig && typeof ratchetClick === 'function') {        // el trinquete: un golpe real por diente de la rueda
+      rcOrig = ratchetClick;
+      ratchetClick = function () {
+        if (!A.ready) return;
+        if (!TRQ.length) return rcOrig();
+        var c = A.ctx, s = c.createBufferSource(), gg = c.createGain();
+        s.buffer = TRQ[Math.floor(Math.random() * TRQ.length)]; s.playbackRate.value = .94 + Math.random() * .12;
+        gg.gain.value = .6; s.connect(gg); gg.connect(A.ratchetG || A.master); s.start();
+      };
+    }
+  }
   function bq(x, sr, tipo, f, Q) {                     // filtro biquad (RBJ) sobre el propio array
     var w = 2 * Math.PI * f / sr, cs = Math.cos(w), al = Math.sin(w) / (2 * Q), b0, b1, b2, a0 = 1 + al, a1 = -2 * cs, a2 = 1 - al;
     if (tipo === 'lp') { b0 = (1 - cs) / 2; b1 = 1 - cs; b2 = b0; }
@@ -3847,6 +4103,7 @@ var SFX = (function () {
     }
   };
   function buffer(nombre) {
+    if (SMP[nombre]) return SMP[nombre];
     if (B[nombre]) return B[nombre];
     var c = A.ctx, sr = c.sampleRate, m = Math.floor(LARGO[nombre] * sr), b = c.createBuffer(1, m, sr), o = b.getChannelData(0), i, pk = 1e-9;
     RECETA[nombre](o, sr);
@@ -3857,6 +4114,7 @@ var SFX = (function () {
   }
   function suena(nombre, cuando, vol) {
     if (!A.ctx || !A.master || !RECETA[nombre]) return;
+    cargaSmp();
     var c = A.ctx;
     if (!g) { g = c.createGain(); g.gain.value = .5; g.connect(A.master); }
     var s = c.createBufferSource(); s.buffer = buffer(nombre); s.playbackRate.value = .96 + Math.random() * .08;
@@ -3872,14 +4130,14 @@ var SFX = (function () {
     L_MONTAR: [['aire', 0, .7], ['aire', .35, .5], ['madera', .87, .4]],
     R_FRENO: [['freno', .05]], P_MARCHA: [['freno', .05]], R_PIANO: [['freno', .05, .7]],
     L_NUEVO_G: [['freno', .05, .7], ['cabezal', .15, .8]], L_NUEVO_Q: [['cabezal', .15, .8]],
-    R_AGUJA: [['aguja', .34]], P_APOYAR: [['aguja', .34]], P_LEVANTAR: [['aguja', .04, .6]], P_ZAFIRO: [['cabezal', .05]]
+    R_AGUJA: [['aguja', .34]], P_APOYAR: [['aguja', .34]], R_AGUJA_C: [['aguja', .34]], P_APOYAR_C: [['aguja', .34]], P_LEVANTAR: [['aguja', .04, .6]], P_ZAFIRO: [['cabezal', .05]]
   };
   function alClip(id) {
     var p = PLAN[id]; if (!p || !A.ctx) return;
     var t = A.ctx.currentTime;
     p.forEach(function (x) { suena(x[0], t + x[1], x[2]); });
   }
-  return { alClip: alClip, suena: suena, muestra: function (x) { return A.ctx ? buffer(x).getChannelData(0) : null; }, get n() { return n; } };   // (muestra: para las pruebas)
+  return { alClip: alClip, suena: suena, carga: cargaSmp, get trinqueteReal() { return !!rcOrig; }, get reales() { return Object.keys(SMP).concat(TRQ.length ? ['trinquete×' + TRQ.length] : []); }, muestra: function (x) { return A.ctx ? buffer(x).getChannelData(0) : null; }, get n() { return n; } };   // (muestra: para las pruebas)
 })();
 
 var UI2 = (function () {
@@ -3887,7 +4145,7 @@ var UI2 = (function () {
   var activa = VID && !/[?&]ui1/.test(location.search);
   var PIEZAS = ['Caja', 'Motor', 'Cilindro', 'Cabezal', 'Bocina'];
   var LLENO = .98, POR_VUELTA = .28;
-  var fase = null, vistas = [], mus = null, pista = null, pausa = null, bordes = null;
+  var fase = null, vistas = [], mus = null, pista = null, pausa = null, bordes = null, aviso = null;
   function entra(card) { if (!card) return; card.classList.remove('u2Entra'); void card.offsetWidth; card.classList.add('u2Entra'); }
 
   /* ── textos breves (Iago: «que el texto que acompaña al título sea breve») ─────────────────────────────────── */
@@ -3980,6 +4238,7 @@ var UI2 = (function () {
       $('gWind').textContent = p + ' %';
       var e = $('u2Muelle'); if (e) e.firstChild.style.transform = 'scaleX(' + S.wind.toFixed(3) + ')';
       if (pista) { pista.querySelector('.u2PPct').textContent = p + ' %'; pista.querySelector('.u2PBar i').style.transform = 'scaleX(' + S.wind.toFixed(3) + ')'; }
+      if (aviso) aviso.querySelector('.u2APct').textContent = p + ' %';
     }
     $('mCrank').disabled = S.wind >= .995 && !cu.pulsado;
   }
@@ -4017,7 +4276,8 @@ var UI2 = (function () {
     document.body.classList.toggle('u2Cuerda', !!pc && !lleno);
     document.body.classList.toggle('u2Suena', !!(st && st.meter));   // Pausa/Parar, solo en «Graba en la cera» y «Escucha…»
     if (!pista) return;
-    pista.classList.toggle('u2Oculto', !pc);
+    pista.classList.toggle('u2Oculto', true);      // (01-10-2026) en la tarjeta ya no: solo el botón de la derecha y su letrero
+    pintaAviso(!!pc && !lleno);
     pista.classList.toggle('lleno', lleno);
     pista.classList.toggle('compacta', pc === 'play');
     var gm = $('gMain');
@@ -4026,6 +4286,23 @@ var UI2 = (function () {
     else if (pc === 'play' && !lleno) gm.disabled = true;
     var lbl = pc === 'play' ? (lleno ? 'Cuerda llena' : 'Antes, da cuerda →') : (lleno ? 'Cuerda llena' : 'Mantén pulsado');
     var l = pista.querySelector('.u2PLbl'); if (l.textContent !== lbl) l.textContent = lbl;
+  }
+
+  /* ── (01-10-2026) el letrero que señala el único botón de cuerda (a la derecha) ─────────────────────────────── */
+  function pintaAviso(enPaso) {
+    if (!aviso) return;
+    var ww = $('windWarn'), bajo = !!(ww && ww.classList.contains('on')), on = (enPaso || bajo) && S.springOn && S.wind < LLENO &&
+      (S.phase === 'guide' || S.phase === 'libre') && !($('cine') && $('cine').classList.contains('open'));
+    var mc = $('mCrank'), r = mc && mc.offsetParent !== null && mc.getBoundingClientRect();
+    if (!r || !(r.width > 0) || DIR.ocupado()) on = false;          // (con un clip en marcha, el letrero espera)
+    if (aviso.classList.contains('on') !== on) aviso.classList.toggle('on', on);
+    if (!on) return;
+    var t = cu.pulsado || cu.auto ? 'Sigue pulsando…' : (bajo && !enPaso ? 'Queda poca cuerda: mantén pulsado aquí' : 'Mantén pulsado aquí para dar cuerda');
+    var tx = aviso.querySelector('.u2ATxt'); if (tx.textContent !== t) tx.textContent = t;
+    var w = aviso.offsetWidth, h = aviso.offsetHeight, gap = Math.max(10, r.height * .28), x = r.left - w - gap, y = r.top + r.height / 2 - h / 2, arriba = false;
+    if (x < 8) { arriba = true; x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)); y = r.top - h - gap; }
+    aviso.classList.toggle('arriba', arriba);
+    aviso.style.left = x.toFixed(1) + 'px'; aviso.style.top = Math.max(8, y).toFixed(1) + 'px';
   }
 
   /* ── modo libre: «Pausa» junto a «Volver a reproducir» ──────────────────────────────────────────────────── */
@@ -4092,7 +4369,7 @@ var UI2 = (function () {
           q(c, 'gAlt').classList.toggle('hidden', !st.alt); if (st.alt) q(c, 'gAlt').textContent = st.alt;
           q(c, 'gAlt2').classList.add('hidden');
           q(c, 'gMeter').classList.toggle('hidden', !st.meter); q(c, 'gMeter').textContent = '0:00 de 2:00  ·  0 surcos';
-          var pi = q(c, 'u2Pista'); if (pi) { pi.classList.toggle('u2Oculto', st.tag !== 'Cuerda'); pi.classList.toggle('compacta', f === 'play'); }
+          var pi = q(c, 'u2Pista'); if (pi) pi.classList.add('u2Oculto');
           tr.classList.toggle('u2Oculto', !st.meter);
           max = Math.max(max, c.offsetHeight);
         });
@@ -4161,6 +4438,12 @@ var UI2 = (function () {
     pista.innerHTML = '<span class="u2PLbl">Mantén pulsado</span><span class="u2PBtn">«Dar cuerda» <i aria-hidden="true">→</i></span>' +
       '<span class="u2PPct">0 %</span><span class="u2PBar" aria-hidden="true"><i></i></span>';
     $('gActions').insertBefore(pista, $('gActions').firstChild);
+    // (01-10-2026) el letrero emergente que señala «Dar cuerda» (el único botón de cuerda)
+    aviso = document.createElement('div'); aviso.id = 'u2Aviso'; aviso.setAttribute('aria-hidden', 'true');
+    aviso.innerHTML = '<span class="u2ATxt">Mantén pulsado aquí para dar cuerda</span><span class="u2APct">0 %</span>';
+    document.body.appendChild(aviso);
+    var wt = $('windWarn') && $('windWarn').querySelector('.wwTxt');
+    if (wt) wt.insertAdjacentHTML('beforeend', '<span class="u2WwDer"> · dale cuerda a la derecha</span>');
     creaPausa();
     // el marco del vídeo y sus bordes
     var vid = $('vid'); if (vid) { bordes = document.createElement('div'); bordes.id = 'u2Bordes'; bordes.setAttribute('aria-hidden', 'true'); vid.insertBefore(bordes, vid.children[1] || null); }
@@ -4188,11 +4471,13 @@ var UI2 = (function () {
     pintaPista(); pintaPausa();
     objetivo = calculaObjetivo();
     AMB.vigila();
+    if (A.ctx) SFX.carga();          // (01-10-2026) el foley real, en cuanto hay audio
   }
   function cuadro(dt) {
     if (!activa) return;
     animaMarco(dt);
     cuidaCuerda();
+    if (aviso && aviso.classList.contains('on')) pintaAviso(!!pasoCuerda() && S.wind < LLENO);   // (01-10-2026) que siga al botón
   }
   return { inicia: inicia, cuadro: cuadro, get activa() { return activa; } };
 })();
@@ -4733,6 +5018,26 @@ body.ui2 .u2Oculto{display:none!important}
   body.ui2 #gMain,body.ui2 #tNext::before,body.ui2 #gMain.on::before,body.ui2 #mCrank,body.ui2 #mCrank::before,body.ui2 #u2Pista .u2PBtn i{animation:none!important}
   body.ui2 .u2Entra #tourTitle,body.ui2 .u2Entra #tourBody,body.ui2 .u2Entra #gTitle,body.ui2 .u2Entra #gBody{animation:none}
 }
+/* (01-10-2026, Iago: «que solo haya un botón al que darle. Puede salir un letrerito emergente señalando a esa zona»)
+   un único botón de cuerda (el de la derecha); un letrero dorado aparece a su lado y lo señala, con el porcentaje */
+body.ui2 #wwBtn{display:none!important}
+body.ui2 #windWarn .u2WwDer{font-weight:600;color:var(--u2soft)}
+body.ui2 #u2Pista{display:none!important}
+body.ui2 #u2Aviso{position:fixed;left:0;top:0;z-index:40;display:flex;align-items:center;gap:calc(var(--u)*1.1);pointer-events:none;
+  padding:calc(var(--u)*1) calc(var(--u)*1.5);border-radius:calc(var(--u)*1.1);background:#EDC873;color:var(--u2ink);
+  font-weight:800;font-size:calc(var(--u)*1.55);line-height:1.2;white-space:nowrap;
+  box-shadow:0 0 0 1px rgba(255,236,190,.55) inset,0 calc(var(--u)*.8) calc(var(--u)*2.6) rgba(0,0,0,.55);
+  opacity:0;visibility:hidden;transform:translateX(calc(var(--u)*-1.2)) scale(.94);transition:opacity .3s,transform .3s,visibility 0s .3s}
+body.ui2 #u2Aviso.on{opacity:1;visibility:visible;transform:none;transition:opacity .3s,transform .3s;animation:u2Senala 1.5s ease-in-out .3s infinite}
+body.ui2 #u2Aviso .u2APct{font-family:var(--lm-num);font-weight:700;font-variant-numeric:tabular-nums;padding-left:calc(var(--u)*1);
+  border-left:1px solid rgba(31,22,5,.28)}
+body.ui2 #u2Aviso::after{content:"";position:absolute;left:100%;top:50%;margin-top:calc(var(--u)*-1);border:calc(var(--u)*1) solid transparent;
+  border-left:calc(var(--u)*1.2) solid #EDC873}
+body.ui2 #u2Aviso.arriba::after{left:50%;top:100%;margin:0 0 0 calc(var(--u)*-1);border:calc(var(--u)*1) solid transparent;border-top:calc(var(--u)*1.2) solid #EDC873}
+body.ui2 #u2Aviso.arriba.on{animation-name:u2SenalaAbajo}
+@keyframes u2Senala{50%{transform:translateX(calc(var(--u)*.7))}}
+@keyframes u2SenalaAbajo{50%{transform:translateY(calc(var(--u)*.6))}}
+@media (prefers-reduced-motion:reduce){ body.ui2 #u2Aviso.on{animation:none} }
 </style>
 </body>
 </html>

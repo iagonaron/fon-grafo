@@ -1,0 +1,48 @@
+{
+ "madera": {
+  "f": "sfx/madera.wav",
+  "dur": 0.458,
+  "de": "ESM_Close_Wood_Chest_with_Handle_Metallic_Building_Material_Hardware_Joinery_Foley.wav"
+ },
+ "metal": {
+  "f": "sfx/metal.wav",
+  "dur": 0.826,
+  "de": "JH_Foley_Big_Metal_Lock_5.wav"
+ },
+ "clic": {
+  "f": "sfx/clic.wav",
+  "dur": 0.35,
+  "de": "ESM_HDLM_fx_foley_click_metal_plastic_movement_hardware_button_press_close_01.wav"
+ },
+ "cabezal": {
+  "f": "sfx/cabezal.wav",
+  "dur": 0.379,
+  "de": "ESM_HDLM_fx_foley_click_metal_plastic_movement_hardware_button_press_open_23.wav"
+ },
+ "freno": {
+  "f": "sfx/freno.wav",
+  "dur": 0.366,
+  "de": "LightSwitchOff_BW.60473.wav"
+ },
+ "trinquete": {
+  "f": [
+   "sfx/trinquete1.wav",
+   "sfx/trinquete2.wav",
+   "sfx/trinquete3.wav",
+   "sfx/trinquete4.wav",
+   "sfx/trinquete5.wav",
+   "sfx/trinquete6.wav",
+   "sfx/trinquete7.wav",
+   "sfx/trinquete8.wav"
+  ],
+  "de": "FF_JO_foley_metal_crank_fast_short.wav"
+ },
+ "sala": {
+  "f": "sfx/sala.wav",
+  "dur": 32,
+  "de": [
+   "ESM_WNL_fx_fire_loop_crackle_campfire_steady_burning_hiss_close_01.wav",
+   "StrangeWind_BW.13121.wav"
+  ]
+ }
+}
