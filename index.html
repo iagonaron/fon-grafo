@@ -84,6 +84,10 @@
   hasta tenerlo todo y luego «Empezar el montaje»; nada late ni titila (botones sin sombra animada); la capa de efectos con
   tope de ~2 Mpx; y ya NUNCA se pasa sola al 3D en vivo (?3d no hace nada; el 3D en vivo, con ?vivo3d). Deshacer: volver a
   subir el index.html del commit accdcf1 de fon-grafo (y su monta/manifest.json).
+  (01-10-2026, tarde, Iago: «que esté marcado 60 y que pueda pulsar un botón que ponga 30») VERSIÓN LIGERA A 30 FPS: en la
+  esquina de abajo a la derecha de la portada (y de la pantalla de carga), «FPS 60 · 30»; 30 carga los mismos vídeos con uno de
+  cada dos fotogramas (monta/30/ y monta/manifest30.json) y se recuerda en ese navegador (también con ?fps=30 / ?fps=60).
+  Deshacer: volver a subir el index.html del commit 195fa0b de fon-grafo (monta/30/ y monta/manifest30.json pueden quedarse).
 -->
 
 <!-- Sentry (17-sep-2026): errores JS en produccion. Sin datos personales: solo el id anonimo de la cuenta como etiqueta. -->
@@ -3091,6 +3095,9 @@ var DIR = (function () {
   var BASE = 'monta/', VW = 1920, VH = 1080, NOGIRO = !/[?&]giro(&|$)/.test(location.search), NOMANI = /[?&]nomani/.test(location.search);   // (01-10-2026, tarde) bucles de vídeo
   var MAN = null, H264 = false, URLS = {}, BLOBS = {}, COLA_DESC = [], BAJANDO = 0, TOT = 0, REC = 0;
   var LISTA = [], BYTES = { ok: 0, en: {}, tot: 0 }, FALLOS = {};   // (01-10-2026, tarde) carga completa con su barra
+  // (01-10-2026, tarde, Iago: «que esté marcado 60 y que pueda pulsar un botón que ponga 30») versión ligera a 30 fps: los mismos
+  // vídeos con uno de cada dos fotogramas (monta/30/, monta/manifest30.json); se elige en la esquina de la portada y se recuerda
+  var FPS30 = (function () { try { if (/[?&]fps=30/.test(location.search)) return true; if (/[?&]fps=60/.test(location.search)) return false; return localStorage.getItem('fonografo_fps') === '30'; } catch (x) { return false; } })();
   var raiz, capas = [], cGlow, gCtx, vPatch, Z = 10;
   var cur = null, visible = null, clip = null, vista = 'sala', trav = null, cola = null, pasa = false;
   var brillo = { clave: '', filas: -1, img: null, ax: null, datos: null, on: 0 };
@@ -3392,7 +3399,7 @@ var DIR = (function () {
   function cargaManifiesto() {
     var v = document.createElement('video');
     H264 = !!(v.canPlayType && v.canPlayType('video/mp4; codecs="avc1.640028"'));
-    return fetch(BASE + 'manifest.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (m) {
+    return fetch(BASE + (FPS30 ? 'manifest30.json' : 'manifest.json')).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (m) {
       MAN = m; VW = m.w || 1920; VH = m.h || 1080;
       var lista = [];
       (m.orden || []).forEach(function (n) {   // (01-10-2026) con giro en tiempo real, los vídeos en bucle no hacen falta
@@ -3942,10 +3949,27 @@ var DIR = (function () {
     }, 150);
   }
 
+  function selectorFps() {          // (01-10-2026, tarde) esquina discreta: 60 marcado; 30 = versión ligera
+    if (document.getElementById('fpsSel')) return;
+    var d = document.createElement('div'); d.id = 'fpsSel'; d.setAttribute('role', 'group'); d.setAttribute('aria-label', 'Fotogramas por segundo');
+    d.innerHTML = '<span>FPS</span><button type="button" data-fps="60">60</button><button type="button" data-fps="30">30</button>';
+    [].forEach.call(d.querySelectorAll('button'), function (b) {
+      var on = (b.getAttribute('data-fps') === '30') === FPS30; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.title = b.getAttribute('data-fps') === '30' ? 'Versión ligera (30 fotogramas por segundo), por si va a tirones' : 'Versión normal (60 fotogramas por segundo)';
+      b.addEventListener('click', function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        var quiere30 = b.getAttribute('data-fps') === '30'; if (quiere30 === FPS30) return;
+        try { localStorage.setItem('fonografo_fps', quiere30 ? '30' : '60'); } catch (x) {}
+        var q = location.search.replace(/([?&])fps=\d+(&|$)/, function (m, a, z) { return z ? a : ''; }).replace(/[?&]$/, '');
+        location.replace(location.pathname + q + (q ? '&' : '?') + 'fps=' + (quiere30 ? '30' : '60') + location.hash);
+      });
+    });
+    document.body.appendChild(d);
+  }
   function inicia() {
     if (!VID) return;
     document.body.classList.add('modoVideo');
-    crea();
+    crea(); selectorFps();
     document.addEventListener('click', puerta, true);
     document.addEventListener('click', bloquea, true);
     document.addEventListener('keydown', teclas, true);
@@ -5159,6 +5183,13 @@ body.ui2 #gMain:not(:disabled):not(.on){box-shadow:0 0 calc(var(--u)*1.8) calc(v
 #mCarga .mcVolver{margin-top:clamp(4px,1vh,10px);padding:6px 0;background:none;border:0;cursor:pointer;font:300 clamp(11px,.9vw,14px)/1 "Jost",system-ui,sans-serif;letter-spacing:.24em;color:rgba(232,220,198,.6)}
 #mCarga .mcVolver:hover,#mCarga .mcVolver:focus-visible{color:#ffd48a;outline:none}
 #mCarga [hidden]{display:none!important}
+/* (01-10-2026, tarde) 60 · 30 fps: en una esquina, discreto (solo en la portada y en la pantalla de carga) */
+#fpsSel{position:fixed;right:max(calc(var(--pad,16px)*1.1),env(safe-area-inset-right));bottom:max(calc(var(--pad,16px)*1.1),env(safe-area-inset-bottom));z-index:61;display:none;align-items:center;gap:6px;font:300 11px/1 "Jost",system-ui,sans-serif;letter-spacing:.22em;color:rgba(232,220,198,.45)}
+body:has(#boot:not(.gone)) #fpsSel,body:has(#mCarga.on) #fpsSel{display:flex}
+#fpsSel span{margin-right:3px}
+#fpsSel button{min-width:34px;height:24px;padding:0 6px;border-radius:4px;border:1px solid rgba(255,212,138,.2);background:rgba(18,12,7,.45);color:rgba(232,220,198,.55);font:inherit;letter-spacing:.06em;cursor:pointer;transition:color .2s,border-color .2s}
+#fpsSel button.on{border-color:rgba(255,212,138,.72);color:#ffe3ae;background:rgba(255,200,120,.1);cursor:default}
+#fpsSel button:hover:not(.on),#fpsSel button:focus-visible{color:#ffd48a;border-color:rgba(255,212,138,.5);outline:none}
 </style>
 </body>
 </html>
