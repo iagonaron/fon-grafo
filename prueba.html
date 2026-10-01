@@ -75,6 +75,15 @@
   micrófono sigue en ese plano; lo que viene detrás de cada paso se descarga antes; el muelle, con el motor en marcha
   esperando, dura minutos (antes se iba agotando mientras se esperaba); un único botón «Dar cuerda» (a la derecha) con un
   letrero que lo señala. Los vídeos de la noche anterior siguen en el historial de GitHub de fon-grafo.
+  (01-10-2026, tarde, URGENTE, Iago tras probarlo en el aula: «muchos tirones» · «el surco dorado… va con latencia» · «que
+  cargue todo al principio… y un botón que ponga empieza el montaje» · «la prioridad es la fluidez para hoy») TODO EN VÍDEO
+  Y PRECARGADO: el cilindro girando vuelve a ser vídeo en bucle sin costura (Media Source) y arranca en el ángulo en que
+  acaba cada clip (el giro dibujado en tiempo real, solo con ?giro); el surco dorado ya no se recalcula en cada fotograma de
+  los clips con la cámara en movimiento (se apaga al moverse y vuelve al asentarse; con ?hojas, lo de antes); todo el montaje
+  (≈120 MB) se descarga a la memoria desde que se abre la página y «Monta tu fonógrafo» enseña una pantalla de carga con barra
+  hasta tenerlo todo y luego «Empezar el montaje»; nada late ni titila (botones sin sombra animada); la capa de efectos con
+  tope de ~2 Mpx; y ya NUNCA se pasa sola al 3D en vivo (?3d no hace nada; el 3D en vivo, con ?vivo3d). Deshacer: volver a
+  subir el index.html del commit accdcf1 de fon-grafo (y su monta/manifest.json).
 -->
 
 <!-- Sentry (17-sep-2026): errores JS en produccion. Sin datos personales: solo el id anonimo de la cuenta como etiqueta. -->
@@ -904,7 +913,7 @@ body.cover #windWarn{opacity:0!important;pointer-events:none!important}
 </div>
 <script>
 (function(){
-  var c=document.getElementById('carga'), t0=Date.now(), vid=!/[?&]3d/.test(location.search);
+  var c=document.getElementById('carga'), t0=Date.now(), vid=!/[?&]vivo3d/.test(location.search);
   function lista(){ var b=document.body, bo=document.getElementById('boot');
     if(!b||!bo||!bo.classList.contains('ready')) return false;
     return !vid || b.classList.contains('vidListo'); }
@@ -2421,7 +2430,7 @@ function fxInit(){
   $('stage').appendChild(FXC); FXG=FXC.getContext('2d'); fxResize();
   window.addEventListener('resize',fxResize);
 }
-function fxResize(){ if(!FXC) return; FXD=Math.min(window.devicePixelRatio||1,1.5); FXC.width=Math.round(innerWidth*FXD); FXC.height=Math.round(innerHeight*FXD); fxDirty=true; }
+function fxResize(){ if(!FXC) return; FXD=Math.min(window.devicePixelRatio||1,1.5,Math.max(.5,Math.sqrt(2.1e6/Math.max(1,innerWidth*innerHeight))));   /* (01-10-2026, tarde) tope ~2 Mpx */ FXC.width=Math.round(innerWidth*FXD); FXC.height=Math.round(innerHeight*FXD); fxDirty=true; }
 /* nivel real de lo que sale por la bocina (o del original, con «Oír original») */
 function playLevel(){
   if(!A.ready) return 0;
@@ -3052,7 +3061,7 @@ function bindCover(){
    fotograma se pinta la posición del ángulo que lleva el cilindro según las rpm de verdad: sin costuras, sin velocidad mínima
    (frena hasta pararse en su sitio y solo entonces funde a la foto fija) y los clips empiezan y acaban en el mismo ángulo
    que se está viendo (si hace falta, el clip espera una fracción de vuelta). ?nogiro → los bucles de vídeo de antes. */
-var VID = !/[?&]3d/.test(location.search);
+var VID = !/[?&]vivo3d/.test(location.search);   // (01-10-2026, tarde) ?3d ya no hace nada (una vuelta automática al 3D se quedaba en la dirección)
 if (VID) FLOWS.rec.steps[4].view = 'bocina';     // (vídeo) «Graba en la cera» en el plano de la bocina: allí se ven bocina, carro y surco
 
 function createVideoScene(THREE, RoundedBoxGeometry, opts) {
@@ -3079,8 +3088,9 @@ function createVideoScene(THREE, RoundedBoxGeometry, opts) {
 
 var DIR = (function () {
   'use strict';
-  var BASE = 'monta/', VW = 1920, VH = 1080, NOGIRO = /[?&]nogiro/.test(location.search);
+  var BASE = 'monta/', VW = 1920, VH = 1080, NOGIRO = !/[?&]giro(&|$)/.test(location.search), NOMANI = /[?&]nomani/.test(location.search);   // (01-10-2026, tarde) bucles de vídeo
   var MAN = null, H264 = false, URLS = {}, BLOBS = {}, COLA_DESC = [], BAJANDO = 0, TOT = 0, REC = 0;
+  var LISTA = [], BYTES = { ok: 0, en: {}, tot: 0 }, FALLOS = {};   // (01-10-2026, tarde) carga completa con su barra
   var raiz, capas = [], cGlow, gCtx, vPatch, Z = 10;
   var cur = null, visible = null, clip = null, vista = 'sala', trav = null, cola = null, pasa = false;
   var brillo = { clave: '', filas: -1, img: null, ax: null, datos: null, on: 0 };
@@ -3136,7 +3146,10 @@ var DIR = (function () {
     el.style.width = (b[2] * c.s).toFixed(1) + 'px'; el.style.height = (b[3] * c.s).toFixed(1) + 'px';
   }
   function libre(tipo, excepto) {
-    return capas.filter(function (e) { return e._tipo === tipo && e !== visible && e !== excepto && !(clip && clip.el === e) && !(trav && trav.el === e); });
+    // (01-10-2026, tarde) la capa que se está preparando para el estado de ahora (p. ej. el bucle que va a salir tras un clip)
+    // no está libre: si no, la precarga del clip siguiente se la quitaba y se quedaba a la vista su primer fotograma, quieto
+    var nc = cur ? nombreDe(cur) : null;
+    return capas.filter(function (e) { return e._tipo === tipo && e !== visible && e !== excepto && !(clip && clip.el === e) && !(trav && trav.el === e) && !(nc && e._uso === nc); });
   }
   function arriba(e, fundido, alTerminar) {
     var prev = visible; visible = e;
@@ -3333,24 +3346,45 @@ var DIR = (function () {
     if (nombre.indexOf('mhoja:') === 0) { var mh = MAN.manivelaGiro && MAN.manivelaGiro[nombre.slice(6)]; return mh ? mh.hoja : null; }
     return null;
   }
+  var CURSO = {};   // (01-10-2026, tarde) lo que ya se está descargando no se vuelve a pedir (se bajaba dos veces)
   function encola(nombre, delante) {
-    if (URLS[nombre] || COLA_DESC.indexOf(nombre) >= 0 && !delante) return;
+    if (URLS[nombre] || CURSO[nombre] || COLA_DESC.indexOf(nombre) >= 0 && !delante) return;
     var i = COLA_DESC.indexOf(nombre); if (i >= 0) COLA_DESC.splice(i, 1);
     if (delante) COLA_DESC.unshift(nombre); else COLA_DESC.push(nombre);
     baja();
   }
   function baja() {
-    while (BAJANDO < 2 && COLA_DESC.length) {
-      var n = COLA_DESC.shift(); if (URLS[n]) continue;
+    while (BAJANDO < 3 && COLA_DESC.length) {
+      var n = COLA_DESC.shift(); if (URLS[n] || CURSO[n]) continue;
       var f = recurso(n); if (!f) continue;
-      BAJANDO++;
+      BAJANDO++; CURSO[n] = 1;
       (function (n, f) {
-        fetch(BASE + f).then(function (r) { if (!r.ok) throw new Error(r.status); return r.blob(); })
-          .then(function (b) { URLS[n] = URL.createObjectURL(b); if (/^(bucle|gbase|ghoja|mhoja):/.test(n)) BLOBS[n] = b; REC++; })
-          .catch(function (e) { console.warn('monta: no se pudo cargar', f, e); REC++; URLS[n] = null; })
-          .then(function () { BAJANDO--; baja(); });
+        // (01-10-2026, tarde) a la memoria, contando los bytes que llegan (barra de la pantalla de carga)
+        fetch(BASE + f).then(function (r) {
+          if (!r.ok) throw new Error(r.status);
+          if (!r.body || !r.body.getReader) return r.blob();
+          var rd = r.body.getReader(), trozos = [], rec = 0, tipo = r.headers.get('content-type') || '';
+          return (function lee() { return rd.read().then(function (x) {
+            if (x.done) return new Blob(trozos, { type: tipo });
+            trozos.push(x.value); rec += x.value.length; BYTES.en[n] = rec; return lee(); }); })();
+        })
+          .then(function (b) { delete BYTES.en[n]; BYTES.ok += b.size; URLS[n] = URL.createObjectURL(b); if (/^(bucle|gbase|ghoja|mhoja):/.test(n)) BLOBS[n] = b; REC++; })
+          .catch(function (e) {
+            delete BYTES.en[n]; FALLOS[n] = (FALLOS[n] || 0) + 1; console.warn('monta: no se pudo cargar', f, e, FALLOS[n]);
+            if (FALLOS[n] < 4) setTimeout(function () { encola(n, true); }, 1500 * FALLOS[n]);   // reintenta (red del aula)
+            else { REC++; URLS[n] = null; }
+          })
+          .then(function () { BAJANDO--; delete CURSO[n]; baja(); });
       })(n, f);
     }
+  }
+  function todoListo() { return !!MAN && LISTA.length > 0 && LISTA.every(function (n) { return !!URLS[n]; }); }
+  function sinRemedio() { return !!MAN && LISTA.length > 0 && LISTA.every(function (n) { return n in URLS; }); }   // ya no queda nada por intentar
+  function progreso() {
+    var en = 0; for (var k in BYTES.en) en += BYTES.en[k];
+    var hechos = LISTA.filter(function (n) { return !!URLS[n]; }).length;
+    var p = BYTES.tot > 0 ? Math.min(1, (BYTES.ok + en) / BYTES.tot) : (LISTA.length ? hechos / LISTA.length : 0);
+    return { p: p, mb: (BYTES.ok + en) / 1e6, mbTot: BYTES.tot / 1e6, hechos: hechos, total: LISTA.length, listo: todoListo(), fin: sinRemedio(), man: !!MAN };
   }
   function esencial() {            // lo mínimo para empezar el montaje sin esperas
     return !!(URLS['clip:MONTA'] && URLS[claveFija('T1@GEN')] && URLS[claveFija('portada')]);
@@ -3365,11 +3399,14 @@ var DIR = (function () {
         if (n.indexOf('bucle:') === 0 && giroDe(n.slice(6))) { var k = n.slice(6); ['gbase:' + k, 'ghoja:' + k].forEach(function (x) { if (lista.indexOf(x) < 0) lista.push(x); }); }
         else if (lista.indexOf(n) < 0) lista.push(n);
       });
-      if (!NOGIRO && m.manivelaGiro) {         // (01-10-2026) la manivela por ángulo: su hoja pronto (paso 1 de «Grabar»); el vídeo, no
+      if (!NOMANI && m.manivelaGiro) {         // (01-10-2026) la manivela por ángulo: su hoja pronto (paso 1 de «Grabar»); el vídeo, no
         lista = lista.filter(function (n) { return !(n.indexOf('mani:') === 0 && m.manivelaGiro[n.slice(5)]); });
         var iM = lista.indexOf('fija:op:MEC:Q:R:x'); Object.keys(m.manivelaGiro).forEach(function (e) { var x = 'mhoja:' + e; if (e === 'MEC' && iM >= 0) lista.splice(iM + 1, 0, x); else lista.push(x); });
       }
-      TOT = lista.length; lista.forEach(function (n) { encola(n); });
+      if (!HOJAS) lista = lista.filter(function (n) { return n.indexOf('glow:glow/clip_') !== 0; });
+      LISTA = lista; TOT = lista.length;
+      BYTES.tot = 0; lista.forEach(function (n) { var f = recurso(n); BYTES.tot += (m.tam && f && m.tam[f]) || 0; });
+      lista.forEach(function (n) { encola(n); });
       if (m.fx && m.fx.BOC) {
         FXT = m.fx.BOC; SC3.cam.position.fromArray(FXT.pos);
         FXT.M = new THREE.Matrix4().fromArray(FXT.vp);
@@ -3419,11 +3456,13 @@ var DIR = (function () {
       return true;
     }
     if (esBucle(k)) {
-      var v = (visible && visible._uso === n) ? visible : libre('video')[0];
+      var v = (visible && visible._uso === n) ? visible : (capas.filter(function (e) { return e._tipo === 'video' && e._uso === n && e !== visible && !(clip && clip.el === e) && !(trav && trav.el === e); })[0] || libre('video')[0]);
       if (!v) return false;
+      var fa0 = anguloVisible(), a0 = clip ? ang : (fa0 ? fa0.a : ang);   // (01-10-2026, tarde) el giro sigue donde iba
       pon(v, n); v.loop = true; v.playbackRate = velocidad(); cur = k;
       var ir = function () {
         if (cur !== k) return;
+        if (visible !== v) { try { var t0 = mod(a0) / OMEGA, du = v._mse && v._mse.dur ? v._mse.dur : v.duration; if (du && isFinite(du)) t0 = t0 % du; if (Math.abs(v.currentTime - t0) > .02) v.currentTime = t0; } catch (x) {} }
         var p = v.play(); if (p && p.catch) p.catch(function () {});
         if (visible === v) return;
         alPrimerFotograma(v, function () { if (cur === k && !clip) arriba(v, fundido); });
@@ -3453,6 +3492,8 @@ var DIR = (function () {
   }
   var espera = null;   // (01-10-2026) clip que espera a que el cilindro llegue a su ángulo de salida o a tener su estado de llegada
   function pideClip(id, forzarCorte) {
+    // (01-10-2026, tarde) al acabar la introducción se entra en el montaje: si aún falta algo, su pantalla de carga encima
+    if (id === 'INTRO_VUELTA' && VID && !todoListo()) setTimeout(function () { pantallaCarga(function () {}, claveFija('T1@GEN')); }, 60);
     if (!MAN || clip || espera) return false;
     var c = MAN.clips[id], n = 'clip:' + id;
     if (!c) return false;
@@ -3494,9 +3535,9 @@ var DIR = (function () {
     if (!v) return false;
     pon(v, n); v.loop = false; v.playbackRate = 1;
     clip = { id: id, el: v, fin: c.fin, t0: performance.now(), dur: c.dur };
-    var hj = !S.blank && hoja(id);                 // (30-sep-2026, tarde, v2) surco dorado dibujado en cada fotograma del clip
+    var hj = HOJAS && !S.blank && hoja(id);        // (01-10-2026, tarde) sin hojas: iban con retraso y cargaban el equipo
     if (hj) { clip.hoja = hj; brillo.clave = 'clip:' + id; brillo.filas = -1; }
-    else ocultaBrillo(.12);
+    else if (!camaraQuieta(c)) ocultaBrillo(.12);
     vPatch.style.opacity = 0;   // (30-sep-2026, tarde) sin hoja, el surco se va en un fundido cortísimo, no de golpe
     if (!S.blank && MAN.brillo && /^op:/.test(c.fin || '')) { var pf = c.fin.split(':'); if (MAN.brillo[pf[1] + ':' + pf[3]]) preparaBrillo(pf[1] + ':' + pf[3]); }
     if (trav) { travFin(); }
@@ -3614,7 +3655,7 @@ var DIR = (function () {
   function brilloAntes() {            // (30-sep-2026, tarde, Iago: «aparece como de repente») el surco vuelve un poco ANTES de
     if (!MAN.brillo || S.blank || !clip) return;   // que acabe el clip, cuando la cámara ya está casi quieta, y se funde
     var v = clip.el, d = v.duration || clip.dur, falta = d - v.currentTime;
-    if (!(v.currentTime > 0) || !(falta < .55)) return;
+    if (!(v.currentTime > 0) || !(falta < .4)) return;   // (01-10-2026, tarde) cuando la cámara ya se ha asentado
     var p = (clip.fin || '').split(':'); if (p[0] !== 'op') return;
     ponBrillo(p[1] + ':' + p[3], false, Math.max(.2, falta));
   }
@@ -3656,10 +3697,12 @@ var DIR = (function () {
      (glow/clip_<ID>.png): para cada fotograma, el mapa de filas del cilindro recortado y a la mitad. Aquí, en cada fotograma de
      vídeo (requestVideoFrameCallback: el mismo que se ve), se pintan de oro las filas ya grabadas. Mismo oro que en las
      estaciones, así que al acabar el clip no se nota el relevo. */
-  var ORO = [135, 88, 32], ORO_VIVO = [191, 156, 85];     // (medidos en los brillos renderizados: reposo y recorrido)
+  var ORO = [135, 88, 32], ORO_VIVO = [191, 156, 85];
+  var HOJAS = /[?&]hojas/.test(location.search);   // (01-10-2026, tarde) las hojas del surco en los clips, solo con ?hojas
+  function camaraQuieta(c) { var a = (c.ini || '').split(':'), b = (c.fin || '').split(':'); return a[0] === 'op' && b[0] === 'op' && a[1] === b[1]; }     // (medidos en los brillos renderizados: reposo y recorrido)
   var HOJAS = {}, hCv = null, hCtx = null;
   function hoja(id) {
-    var b = MAN && MAN.brilloClip && MAN.brilloClip[id]; if (!b) return null;
+    var b = HOJAS && MAN && MAN.brilloClip && MAN.brilloClip[id]; if (!b) return null;
     var h = HOJAS[id]; if (h && h.img) return h.listo ? h : null;
     var n = 'glow:' + b.img; if (!URLS[n]) { encola(n, true); return null; }
     if (!h) { h = HOJAS[id] = { meta: b, img: new Image(), listo: false }; h.img.onload = function () { h.listo = true; }; h.img.src = URLS[n]; }
@@ -3707,7 +3750,7 @@ var DIR = (function () {
      la manivela de verdad (CRANK): sin el arranque y la frenada del vídeo de dos vueltas repitiéndose mientras se mantiene
      pulsado, y se para donde se para (al soltar, la vuelta se completa hasta abajo, como la de la foto). */
   var cMani = null, mani = { est: null, j: -1, bmp: {}, on: false };
-  function maniDe(est) { return !NOGIRO && MAN && MAN.manivelaGiro && est ? MAN.manivelaGiro[est] || null : null; }
+  function maniDe(est) { return !NOMANI && MAN && MAN.manivelaGiro && est ? MAN.manivelaGiro[est] || null : null; }
   function estDe(k) { var p = (k || '').split(':'); return p[0] === 'op' ? p[1] : null; }
   function maniBmp(est) {
     var b = mani.bmp[est]; if (b) return b;
@@ -3835,12 +3878,56 @@ var DIR = (function () {
     }
   }
 
-  /* ── «MONTA TU FONÓGRAFO» espera a tener lo esencial (barra dorada como la de la introducción) ── */
+  /* ── (01-10-2026, tarde) «MONTA TU FONÓGRAFO»: si aún falta algo del montaje, pantalla de carga hasta tenerlo TODO en la
+     memoria y luego «Empezar el montaje» (Iago: «yo en clase puedo estar hablando… que cargue todo al principio») ── */
+  var CG = null;
+  function pantallaCarga(alEmpezar, fondo) {
+    if (!CG) {
+      CG = document.createElement('div'); CG.id = 'mCarga';
+      CG.innerHTML = '<div class="mcFondo"></div><div class="mcVelo"></div><div class="mcCaja"><p class="coverEyebrow">MONTA TU FONÓGRAFO</p>' +
+        '<h2 class="mcTit">Preparando el montaje</h2><div class="mcBarra"><i></i></div><p class="mcTxt">0 %</p>' +
+        '<button class="coverBtn primary" id="mcEmpezar" hidden><span>EMPEZAR EL MONTAJE</span><b>›</b></button>' +
+        '<p class="mcNota">Se carga todo antes de empezar para que vaya fluido.</p><button class="mcVolver" type="button">‹ Volver</button></div>';
+      document.body.appendChild(CG);
+      document.addEventListener('keydown', function (ev) { if (CG && CG.classList.contains('on') && ev.target && ev.target.id !== 'mcEmpezar') { ev.stopImmediatePropagation(); if (ev.code !== 'Tab') ev.preventDefault(); } }, true);
+    }
+    var bE = CG.querySelector('#mcEmpezar'), bV = CG.querySelector('.mcVolver'), barra = CG.querySelector('.mcBarra i'),
+      txt = CG.querySelector('.mcTxt'), tit = CG.querySelector('.mcTit'), fd = CG.querySelector('.mcFondo');
+    var uf = fondo && URLS[fondo]; fd.style.backgroundImage = uf ? 'url("' + uf + '")' : '';
+    bE.hidden = true; bV.hidden = !alEmpezar.volver; tit.textContent = 'Preparando el montaje';
+    CG.style.transition = 'none'; CG.style.opacity = 1; CG.classList.add('on');
+    clearInterval(CG._tm);
+    var listo = false;
+    function pinta() {
+      var p = progreso(), pc = Math.floor(p.p * 100);
+      if (!p.man) { txt.textContent = 'Conectando…'; return; }
+      barra.style.width = (100 * Math.max(.02, p.p)).toFixed(1) + '%';
+      if (p.listo || p.fin) {
+        if (listo) return; listo = true; barra.style.width = '100%';
+        tit.textContent = p.listo ? 'Todo listo' : 'Casi todo listo';
+        txt.textContent = p.listo ? 'Todo cargado' : 'Faltan ' + (p.total - p.hechos) + ' archivos: puede ir a tirones';
+        bE.hidden = false; try { bE.focus({ preventScroll: true }); } catch (x) {}
+        return;
+      }
+      txt.textContent = Math.min(99, pc) + ' %' + (p.mbTot > 1 ? '  ·  ' + Math.round(Math.min(p.mb, p.mbTot)) + ' de ' + Math.round(p.mbTot) + ' MB' : '');
+    }
+    pinta(); CG._tm = setInterval(pinta, 200);
+    function cierra(fn) {
+      clearInterval(CG._tm); CG.style.transition = 'opacity .35s'; CG.style.opacity = 0;
+      setTimeout(function () { CG.classList.remove('on'); }, 380); if (fn) fn();
+    }
+    bE.onclick = function (ev) { ev.preventDefault(); ev.stopPropagation(); cierra(alEmpezar); };
+    bV.onclick = function (ev) { ev.preventDefault(); ev.stopPropagation(); cierra(null); };
+  }
   function puerta(e) {
     if (pasa || !VID) return;
     var t = e.target && e.target.closest ? e.target.closest('#bBoot') : null; if (!t) return;
-    if (esencial()) return;
+    if (todoListo()) return;
     e.stopImmediatePropagation(); e.preventDefault();
+    var empieza = function () { pasa = true; try { t.click(); } finally { pasa = false; } };
+    empieza.volver = true;
+    pantallaCarga(empieza, claveFija('portada'));
+    return;
     if (t.classList.contains('cargando')) return;
     var lab = t.querySelector('span'), txt0 = lab.textContent, fill = t.querySelector('i.cargaIntro');
     if (!fill) { fill = document.createElement('i'); fill.className = 'cargaIntro'; t.insertBefore(fill, t.firstChild); }
@@ -3862,10 +3949,15 @@ var DIR = (function () {
     document.addEventListener('click', puerta, true);
     document.addEventListener('click', bloquea, true);
     document.addEventListener('keydown', teclas, true);
-    cargaManifiesto().then(function () { cur = null; }, function (e) {
-      console.warn('monta: sin manifiesto de vídeo, se pasa al 3D en vivo', e);
-      if (!/[?&]3d/.test(location.search)) location.replace(location.pathname + (location.search ? location.search + '&3d' : '?3d') + location.hash);
-    });
+    try { if (/[?&]3d(&|$)/.test(location.search) && history.replaceState) history.replaceState(null, '', location.pathname + location.search.replace(/([?&])3d(&|$)/, function (m, a, b) { return b ? a : ''; }).replace(/[?&]$/, '') + location.hash); } catch (x) {}
+    // (01-10-2026, tarde) sin red no se pasa al 3D en vivo (en el aula iba a tirones): se reintenta hasta que llegue
+    var intento = 0;
+    (function prueba() {
+      cargaManifiesto().then(function () { cur = null; }, function (e) {
+        intento++; console.warn('monta: sin manifiesto de vídeo, reintento ' + intento, e); L('manifiesto: reintento ' + intento);
+        setTimeout(prueba, Math.min(8000, 1500 * intento));
+      });
+    })();
   }
 
   var PASOS = { rec: ['R_CUERDA', 'R_FRENO', 'R_AGUJA', null, null], play: ['P_LEVANTAR', 'P_ZAFIRO', 'P_MARCHA', 'P_APOYAR', null] };
@@ -3880,6 +3972,7 @@ var DIR = (function () {
   function recursoDe(n) { if (n.indexOf('giro:') === 0) return !!giroDe(n.slice(5)); return !!recurso(n); }
   return {
     inicia: inicia, cuadro: cuadro, clip: pideClip, paso: paso, manivela: manivela, manivelaPara: manivelaPara, marco: ponMarco, anclas: anclas, proyecta: proyecta,
+    progreso: progreso, todoListo: todoListo,   // (01-10-2026, tarde) carga completa
     set vista(n) { vista = n; }, get vista() { return vista; }, get angulo() { return ang; },
     ocupado: function () { return !!clip || !!espera; }, actual: function () { return cur; } /* (30-sep-2026) para el titileo de las lámparas (UI2) */, esencial: esencial, estado: function () { return { cur: cur, clip: clip && clip.id, trav: !!trav, vista: vista, cargados: Object.keys(URLS).length, total: TOT, log: dbg.slice(-60),
       giro: capas.filter(function (e) { return e._tipo === 'giro' && e._uso; }).map(function (e) { return { uso: e._uso, pos: e._j, listo: !!e._listo, visible: e === visible, op: e.style.opacity }; }),
@@ -5045,6 +5138,27 @@ body.ui2 #u2Aviso.arriba.on{animation-name:u2SenalaAbajo}
 @keyframes u2Senala{50%{transform:translateX(calc(var(--u)*.7))}}
 @keyframes u2SenalaAbajo{50%{transform:translateY(calc(var(--u)*.6))}}
 @media (prefers-reduced-motion:reduce){ body.ui2 #u2Aviso.on{animation:none} }
+</style>
+<style id="fluido">
+/* (01-10-2026, tarde) FLUIDEZ EN EL AULA: nada que lata ni titile (las sombras animadas se repintan en cada fotograma) */
+body.ui2 #tNext::before,body.ui2 #gMain:not(:disabled):not(.on),body.ui2.u2Cuerda #mCrank,.step.now i,#windWarn.on{animation:none!important}
+body.ui2 #tNext::before{box-shadow:0 calc(var(--u)*.6) calc(var(--u)*2) rgba(0,0,0,.5),0 0 calc(var(--u)*1.8) calc(var(--u)*.2) rgba(255,214,130,.32)}
+body.ui2 #gMain:not(:disabled):not(.on){box-shadow:0 0 calc(var(--u)*1.8) calc(var(--u)*.2) rgba(255,214,130,.3)}
+/* (01-10-2026, tarde) pantalla de carga del montaje: todo a la memoria antes de empezar */
+#mCarga{position:fixed;inset:0;z-index:58;display:none;background:#0B0805}
+#mCarga.on{display:block}
+#mCarga .mcFondo{position:absolute;inset:0;background:#0B0805 center/cover no-repeat;opacity:.62}
+#mCarga .mcVelo{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,8,5,.93) 0%,rgba(11,8,5,.72) 38%,rgba(11,8,5,.18) 78%)}
+#mCarga .mcCaja{position:absolute;left:clamp(26px,6vw,140px);top:57%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:flex-start;gap:clamp(12px,1.8vh,22px);max-width:min(620px,86vw)}
+#mCarga .mcTit{margin:0;font:200 clamp(28px,3.4vw,70px)/1.05 "Jost",system-ui,sans-serif;letter-spacing:.12em;color:#fff2da;text-shadow:0 4px 30px rgba(0,0,0,.7)}
+#mCarga .mcBarra{position:relative;width:min(400px,78vw);height:2px;background:rgba(255,212,138,.2);overflow:hidden;margin-top:clamp(4px,1vh,10px)}
+#mCarga .mcBarra i{position:absolute;left:0;top:0;bottom:0;width:0;background:#e0b65a;transition:width .3s linear}
+#mCarga .mcTxt{margin:0;font:300 clamp(11px,1vw,16px)/1 "Jost",system-ui,sans-serif;letter-spacing:.24em;color:#d8c9ad;font-variant-numeric:tabular-nums}
+#mCarga #mcEmpezar{margin-top:clamp(6px,1.4vh,16px)}
+#mCarga .mcNota{margin:0;max-width:46ch;font:300 clamp(12px,.95vw,15px)/1.6 "Jost",system-ui,sans-serif;color:rgba(232,220,198,.62)}
+#mCarga .mcVolver{margin-top:clamp(4px,1vh,10px);padding:6px 0;background:none;border:0;cursor:pointer;font:300 clamp(11px,.9vw,14px)/1 "Jost",system-ui,sans-serif;letter-spacing:.24em;color:rgba(232,220,198,.6)}
+#mCarga .mcVolver:hover,#mCarga .mcVolver:focus-visible{color:#ffd48a;outline:none}
+#mCarga [hidden]{display:none!important}
 </style>
 </body>
 </html>
