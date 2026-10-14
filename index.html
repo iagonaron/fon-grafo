@@ -88,6 +88,14 @@
   esquina de abajo a la derecha de la portada (y de la pantalla de carga), «FPS 60 · 30»; 30 carga los mismos vídeos con uno de
   cada dos fotogramas (monta/30/ y monta/manifest30.json) y se recuerda en ese navegador (también con ?fps=30 / ?fps=60).
   Deshacer: volver a subir el index.html del commit 195fa0b de fon-grafo (monta/30/ y monta/manifest30.json pueden quedarse).
+
+  AVISO 14-10-2026 (conversación Cowork del escape room «Atonalidad», sesión https://claude.ai/code/session_01Koj39BMtiSfP1svuxlxwda,
+  a petición de Iago): SELECCIONADOR DE VOLUNTARIOS, solo para la cuenta Protester. Partiendo del commit 0bf8ec6, dos bloques
+  nuevos al principio del <head> (marcados «SELECCIONADOR DE VOLUNTARIOS»): un cargador que, si el medallero de gp.lmathome.es
+  abre esta página con «#c=<cuenta>» (solo lo hace con la cuenta de pruebas), lo quita de la dirección, lo guarda en este
+  navegador y carga https://gp.lmathome.es/voluntarios/lm-voluntarios.js (botón «Voluntarios» arriba a la derecha, activo solo
+  en la hora de clase de 2GpC y 2GpF; ruleta de 5 s con un disco y su aguja); y su CSS (#bVoluntarios). A los alumnos no les
+  cambia nada. Deshacer: borrar esos dos bloques o volver a subir el index.html del commit 0bf8ec6.
 -->
 
 <!-- Sentry (17-sep-2026): errores JS en produccion. Sin datos personales: solo el id anonimo de la cuenta como etiqueta. -->
@@ -108,6 +116,49 @@ if(window.Sentry && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){
 </script>
 
 <meta charset="utf-8">
+<!-- LM at home · SELECCIONADOR DE VOLUNTARIOS (14-oct-2026, Claude para Iago). Solo con la cuenta Protester: el medallero de
+     gp.lmathome.es abre este portal con «#c=<cuenta>»; aquí se quita de la dirección, se guarda en este navegador y se carga
+     el seleccionador de https://gp.lmathome.es/voluntarios/ (botón «Voluntarios» arriba a la derecha, activo en la hora de clase).
+     A los alumnos no les hace nada. Quitarlo de este portal: borrar este bloque (y su regla #bVoluntarios del CSS). -->
+<script>
+window.LM_VOL_CONFIG = function () {
+  return {
+      portal: 'fonografo', tema: 'disco',
+      boton: { padre: document.body, clase: '', id: 'bVoluntarios' }
+    };
+};
+(function () {
+  try {
+    var m = /(?:^#|&)c=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i.exec(location.hash || ''), c = null;
+    if (m) {
+      c = m[1].toLowerCase(); try { localStorage.setItem('lm_vol_cuenta', c); } catch (e) {}
+      try { var h = location.hash.replace(/^#/, '').split('&').filter(function (p) { return p && !/^c=/.test(p); }).join('&');
+            history.replaceState(history.state, '', location.pathname + location.search + (h ? '#' + h : '')); } catch (e) {}
+    } else { try { c = localStorage.getItem('lm_vol_cuenta'); } catch (e) {} }
+    if (!c) return;
+    var s = document.createElement('script'); s.async = true;
+    s.src = 'https://gp.lmathome.es/voluntarios/lm-voluntarios.js?h=' + Math.floor(Date.now() / 36e5);
+    s.onload = function () {
+      var ir = function () { try { if (window.LMVoluntarios) window.LMVoluntarios.monta(window.LM_VOL_CONFIG()); } catch (e) {} };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ir); else ir();
+    };
+    document.head.appendChild(s);
+  } catch (e) {}
+})();
+</script>
+<style>
+/* (14-oct-2026) el seleccionador de voluntarios: solo con la cuenta Protester (el botón lo crea lm-voluntarios.js, de gp.lmathome.es):
+   arriba a la derecha, con la misma forma que el de pantalla completa (en la portada, a su izquierda) */
+#bVoluntarios{position:fixed;top:max(calc(var(--pad,16px)*.9),env(safe-area-inset-top));right:calc(var(--pad,16px)*1.1);z-index:60;height:32px;box-sizing:border-box;
+  padding:0 12px 0 9px;gap:7px;border-radius:8px;border:1px solid rgba(255,255,255,.22);background:rgba(20,14,9,.45);color:rgba(255,236,210,.8);
+  font:500 12px/1 Jost,"Iowan Old Style",Palatino,Georgia,serif;letter-spacing:.16em;text-transform:uppercase;opacity:.75;transition:opacity .2s,border-color .2s,background .2s}
+#bVoluntarios:hover,#bVoluntarios:focus-visible{opacity:1;border-color:rgba(255,220,170,.6);background:rgba(20,14,9,.7);outline:none}
+#bVoluntarios .lmv-ico{width:16px;height:16px;stroke-width:2}
+body:has(#boot:not(.gone)) #bVoluntarios{right:calc(var(--pad,16px)*1.1 + 44px)}
+body:has(#intro.on) #bVoluntarios{opacity:0;pointer-events:none}   /* en la introducción, nada encima de su «SALIR» */
+@media (min-width:2300px){ body.ui2 #bVoluntarios{zoom:1.5} }
+@media (min-width:3000px){ body.ui2 #bVoluntarios{zoom:2} }
+</style>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Fonógrafo de cilindro de cera — montaje y manejo guiado</title>
 
