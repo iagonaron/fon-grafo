@@ -124,6 +124,9 @@ if(window.Sentry && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){
 window.LM_VOL_CONFIG = function () {
   return {
       portal: 'fonografo', tema: 'disco',
+      // (22-oct-2026, v5) cada sección, su animación: el montaje, la mesa del taller con la lupa; la grabación (la oferta que
+      // sale al acabar de montar, antes de grabar), el cilindro de cera
+      temaDe: function (op) { return op && op.tema ? op.tema : 'taller'; },
       boton: { padre: document.body, clase: '', id: 'bVoluntarios' }
     };
 };
@@ -1893,7 +1896,13 @@ function assemble(){
   $('tour').classList.add('hidden');
   $('rail').classList.remove('hidden');
   orbGo('general');
-  setTimeout(function(){ startFlow('rec',0); },700);
+  /* (22-oct-2026) antes de grabar, con la cuenta Protester y en hora de clase, «Seleccionar voluntario» (con el cilindro de cera:
+     el montaje ya tuvo la mesa del taller). Alumnos, en casa o fuera de hora: se pasa a grabar como siempre. */
+  setTimeout(function(){
+    var ir = function(){ startFlow('rec',0); };
+    try { if (window.LMVoluntarios && typeof window.LMVoluntarios.ofrece === 'function') { Promise.resolve(window.LMVoluntarios.ofrece({ tema: 'disco' })).then(ir, ir); return; } } catch (e) {}
+    ir();
+  },700);
 }
 
 /* ═══ 4 · CÁMARA ══════════════════════════════════════════
