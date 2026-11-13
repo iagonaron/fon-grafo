@@ -5251,6 +5251,62 @@ body:has(#boot:not(.gone)) #fpsSel,body:has(#mCarga.on) #fpsSel{display:flex}
 #fpsSel button.on{border-color:rgba(255,212,138,.72);color:#ffe3ae;background:rgba(255,200,120,.1);cursor:default}
 #fpsSel button:hover:not(.on),#fpsSel button:focus-visible{color:#ffd48a;border-color:rgba(255,212,138,.5);outline:none}
 </style>
+<script>/* (13-nov-2026, Iago · Qué suma v2, C1) «cada capítulo cuenta al llegar al 75 %»: el Fonógrafo tiene dos actos y le dice al latido en cuál está
+   (data-lm-ejercicio en <html>: «parte-1» = introducción, «parte-2» = montaje o «portada») y cuánto lleva hecho (data-lm-progreso, 0–1; el latido lo manda a la campana cada 5 s).
+   · parte-1 (introducción) = el vídeo de la introducción: segundos realmente reproducidos ÷ duración (sin pausa, sin saltar); 1 al acabar el vídeo.
+   · parte-2 (montaje) = el recorrido de 15 pasos: montaje (5) + grabar (5) + escuchar (5); cuenta cada paso ya PASADO (el actual aún no); 1 al llegar al modo libre.
+   Portada, pantalla de carga y despiece: «portada», sin progreso. Nunca baja (se guarda en este navegador: lm_fon_progreso). Solo lee window.__S,
+   window.__dbg.G y el <video id="introVid">; no cambia nada más. Quitarlo: borrar este bloque. */
+(function () {
+  var TOT = 15, K = 'lm_fon_progreso', st = null, h = document.documentElement, vistos = {}, durV = 0;
+  function carga() {
+    if (st) return;
+    st = { introduccion: 0, montaje: 0 };
+    try { var g = JSON.parse(localStorage.getItem(K) || 'null'); if (g && typeof g === 'object') { st.introduccion = +g.introduccion || 0; st.montaje = +g.montaje || 0; } else { var n = parseFloat(g); if (n > 0) st.montaje = Math.min(1, n); } } catch (e) {}
+  }
+  function guarda() { try { localStorage.setItem(K, JSON.stringify(st)); } catch (e) {} }
+  function pasos() {    /* pasos pasados del montaje (0–15) o -1 si no estás en el montaje */
+    var S = window.__S, D = window.__dbg, G = D && D.G; if (!S) return -1;
+    var f = S.phase;
+    if (f === 'libre') return TOT;
+    if (f === 'tour') return Math.max(0, Math.min(4, +S.tourStep || 0));
+    if (f === 'armada') return 5;
+    if (f === 'guide' && G && G.flow) { var i = Math.max(0, Math.min(4, +G.i || 0)); return (G.flow === 'play' ? 10 : 5) + i; }
+    return -1;
+  }
+  function pon(ej, v) {
+    if (h.getAttribute('data-lm-ejercicio') !== ej) h.setAttribute('data-lm-ejercicio', ej);
+    if (v === null) { if (h.hasAttribute('data-lm-progreso')) h.removeAttribute('data-lm-progreso'); return; }
+    var a = v.toFixed(3); if (h.getAttribute('data-lm-progreso') !== a) h.setAttribute('data-lm-progreso', a);
+  }
+  function tic() {
+    try {
+      var S = window.__S; if (!S) return; carga();
+      var f = S.phase;
+      if (f === 'intro-go' || f === 'intro' || f === 'intro-end') {
+        var v = document.getElementById('introVid'), cambio = false;
+        if (v && v.duration > 0) {
+          durV = v.duration;
+          if (f === 'intro' && !v.paused && !v.seeking && !v.ended && !document.hidden) { var k = Math.floor(v.currentTime); if (!vistos[k]) { vistos[k] = 1; } }
+        }
+        var n = 0; for (var q in vistos) n++;
+        var x = durV ? Math.min(1, n / Math.max(1, Math.floor(durV))) : 0;
+        if (f === 'intro-end' || (v && v.ended)) x = 1;
+        if (x > st.introduccion) { st.introduccion = x; cambio = true; }
+        if (cambio) guarda();
+        pon('parte-1', st.introduccion); return;
+      }
+      var p = pasos();
+      if (p < 0) { pon('portada', null); return; }
+      var m = Math.min(1, p / TOT);
+      if (m > st.montaje) { st.montaje = m; guarda(); }
+      pon('parte-2', st.montaje);
+    } catch (e) {}
+  }
+  setInterval(tic, 1000);
+  window.__fonProgreso = function () { carga(); return st; };
+})();
+</script>
 <script src="https://ge.lmathome.es/piel/latido.js?v=1" defer></script><!-- (15-oct-2026, Iago) trabajo por libre: el latido para la campana del Diario. Para quitarlo: borrar esta línea -->
 </body>
 </html>
